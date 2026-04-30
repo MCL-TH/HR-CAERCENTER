@@ -3,268 +3,383 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบลงทะเบียนพนักงาน</title>
+    <title>Maersk Employee Portal - Production</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- LINE LIFF SDK -->
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Kanit', sans-serif; }
-        .glass-morphism {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
+        :root { --maersk-blue: #007EB3; --maersk-dark: #1E1E1E; --maersk-light-blue: #E6F2F7; }
+        body { font-family: 'Kanit', 'Inter', sans-serif; background-color: #f8fafc; }
+        .bg-maersk { background-color: var(--maersk-blue); }
+        .text-maersk { color: var(--maersk-blue); }
+        .app-container { max-width: 450px; margin: 0 auto; min-height: 100vh; background: white; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05); }
+        .profile-card { background: linear-gradient(135deg, #007EB3 0%, #005f87 100%); border-radius: 28px; position: relative; overflow: hidden; }
+        .profile-card::after { content: ""; position: absolute; top: -10%; right: -5%; width: 180px; height: 180px; background: rgba(255, 255, 255, 0.08); border-radius: 50%; }
+        .step-transition { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-radio:checked + div { border-color: var(--maersk-blue); background-color: var(--maersk-light-blue); color: var(--maersk-blue); box-shadow: 0 4px 12px rgba(0, 126, 179, 0.15); }
+        .glass-effect { background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.18); }
+        .loading-overlay { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body>
 
-    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col p-4">
-        <!-- Loading State -->
-        <div id="loading-overlay" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-            <p class="mt-4 text-slate-500 text-sm">กำลังโหลดระบบ...</p>
-        </div>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-overlay">
+        <div class="w-12 h-12 border-4 border-blue-100 border-t-maersk rounded-full animate-spin mb-4"></div>
+        <p class="text-maersk font-bold tracking-widest animate-pulse">MAERSK</p>
+    </div>
 
-        <!-- Main Content -->
-        <main class="flex-grow pt-8">
-            <!-- Header Section -->
-            <div class="text-center mb-8">
-                <div class="inline-block p-3 bg-blue-600 rounded-2xl shadow-lg mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+    <div class="app-container flex flex-col relative overflow-hidden min-h-screen">
+        
+        <header class="p-5 flex justify-between items-center bg-white border-b border-gray-50">
+            <div class="flex items-center gap-2">
+                <div class="bg-maersk p-1.5 rounded-md shadow-sm">
+                    <svg width="18" height="18" viewBox="0 0 100 100" fill="none"><path d="M50 15L58 42H85L63 58L71 85L50 68L29 85L37 58L15 42H42L50 15Z" fill="white"/></svg>
                 </div>
-                <h1 class="text-2xl font-bold text-slate-800">ระบบลงทะเบียนพนักงาน</h1>
-                <p class="text-slate-500">ลงทะเบียนรับเสื้อยูนิฟอร์มประจำปี</p>
+                <h1 class="font-bold text-lg text-maersk tracking-widest uppercase">MAERSK</h1>
             </div>
+            <div id="line-profile" class="flex items-center gap-2 hidden">
+                <img id="line-avatar" src="" class="w-6 h-6 rounded-full border border-gray-100">
+                <span id="line-name" class="text-[10px] font-bold text-gray-500 truncate max-w-[80px]"></span>
+            </div>
+        </header>
 
-            <!-- Registration Card -->
-            <div class="glass-morphism rounded-3xl shadow-xl overflow-hidden mb-6">
-                <!-- Step 1: Employee ID Check -->
-                <div id="step-1" class="p-6">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-slate-700 mb-2">รหัสพนักงาน</label>
-                        <div class="relative">
-                            <input type="text" id="emp-id-input" 
-                                class="w-full px-4 py-3 bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 rounded-xl transition-all outline-none" 
-                                placeholder="เช่น EMP001">
-                        </div>
+        <main class="flex-grow flex flex-col p-6">
+            
+            <!-- VIEW: LOGIN -->
+            <section id="view-login" class="step-transition flex flex-col items-center justify-center py-12 hidden">
+                <div class="text-center mb-10">
+                    <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-5 rotate-3 shadow-inner">
+                        <svg class="w-10 h-10 text-maersk" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     </div>
-                    <button onclick="handleVerifyEmployee()" id="btn-verify"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center">
-                        <span id="btn-verify-text">ตรวจสอบรหัสพนักงาน</span>
+                    <h2 class="text-2xl font-bold text-gray-800">ยืนยันตัวตนพนักงาน</h2>
+                    <p class="text-gray-400 font-light text-sm mt-1">ระบุรหัสพนักงาน 7 หลักเพื่อเข้าใช้งาน</p>
+                </div>
+                <div class="w-full space-y-4">
+                    <input type="text" id="emp-id-input" maxlength="7" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="เช่น 1234567" 
+                        class="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-3xl focus:border-maersk focus:bg-white outline-none transition-all text-2xl font-bold text-center">
+                    <button onclick="handleLogin()" id="login-btn" class="w-full bg-maersk text-white font-bold py-5 rounded-3xl shadow-xl shadow-blue-100 active:scale-95 transition-all flex items-center justify-center gap-3">
+                        เข้าสู่ระบบ
                     </button>
                 </div>
+            </section>
 
-                <!-- Step 2: Employee Data & Selection -->
-                <div id="step-2" class="hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <!-- Info Badge -->
-                    <div class="bg-blue-600 p-6 text-white">
-                        <p class="text-blue-100 text-xs uppercase tracking-wider mb-1 font-medium">ข้อมูลพนักงาน</p>
-                        <h2 id="display-full-name" class="text-xl font-bold">-</h2>
-                        <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
-                            <div>
-                                <p class="text-blue-200">แผนก</p>
-                                <p id="display-dept" class="font-medium">-</p>
-                            </div>
-                            <div>
-                                <p class="text-blue-200">ตำแหน่ง</p>
-                                <p id="display-pos" class="font-medium">-</p>
-                            </div>
-                            <div class="col-span-2">
-                                <p class="text-blue-200">อายุงาน</p>
-                                <p id="display-tenure" class="font-medium">-</p>
-                            </div>
+            <!-- VIEW: DASHBOARD -->
+            <section id="view-dashboard" class="hidden step-transition space-y-6">
+                <div class="profile-card p-6 text-white shadow-2xl shadow-blue-200">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="glass-effect p-2 rounded-xl">
+                            <svg width="20" height="20" viewBox="0 0 100 100" fill="none"><path d="M50 15L58 42H85L63 58L71 85L50 68L29 85L37 58L15 42H42L50 15Z" fill="white"/></svg>
+                        </div>
+                        <div class="text-right">
+                            <p id="display-id" class="text-xs font-bold opacity-70 tracking-widest uppercase"></p>
+                            <p class="text-[9px] opacity-50 uppercase">Verified Staff</p>
                         </div>
                     </div>
-
-                    <!-- Form Selection -->
-                    <div class="p-6 bg-white">
-                        <form id="reg-form" onsubmit="handleRegistration(event)">
-                            <div class="mb-6">
-                                <label class="block text-sm font-bold text-slate-700 mb-3">ไซส์เสื้อยูนิฟอร์ม</label>
-                                <div class="grid grid-cols-3 gap-3">
-                                    <!-- Size Options -->
-                                    <label class="size-option relative">
-                                        <input type="radio" name="shirt-size" value="S" class="hidden peer" required>
-                                        <div class="text-center py-3 border-2 border-slate-100 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all cursor-pointer font-medium">S</div>
-                                    </label>
-                                    <label class="size-option relative">
-                                        <input type="radio" name="shirt-size" value="M" class="hidden peer">
-                                        <div class="text-center py-3 border-2 border-slate-100 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all cursor-pointer font-medium">M</div>
-                                    </label>
-                                    <label class="size-option relative">
-                                        <input type="radio" name="shirt-size" value="L" class="hidden peer">
-                                        <div class="text-center py-3 border-2 border-slate-100 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all cursor-pointer font-medium">L</div>
-                                    </label>
-                                    <label class="size-option relative">
-                                        <input type="radio" name="shirt-size" value="XL" class="hidden peer">
-                                        <div class="text-center py-3 border-2 border-slate-100 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all cursor-pointer font-medium">XL</div>
-                                    </label>
-                                    <label class="size-option relative">
-                                        <input type="radio" name="shirt-size" value="2XL" class="hidden peer">
-                                        <div class="text-center py-3 border-2 border-slate-100 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all cursor-pointer font-medium">2XL</div>
-                                    </label>
-                                    <label class="size-option relative">
-                                        <input type="radio" name="shirt-size" value="3XL" class="hidden peer">
-                                        <div class="text-center py-3 border-2 border-slate-100 rounded-xl peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all cursor-pointer font-medium">3XL</div>
-                                    </label>
-                                </div>
-                            </div>
-                            <button type="submit" id="btn-submit"
-                                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">
-                                บันทึกการลงทะเบียน
-                            </button>
-                        </form>
+                    <div class="space-y-1 mb-8">
+                        <h3 id="display-name" class="text-2xl font-bold tracking-tight"></h3>
+                        <div class="flex items-center gap-2 text-white/80 text-sm">
+                            <span id="display-pos" class="font-medium underline decoration-white/30 underline-offset-4"></span>
+                            <span class="opacity-30">|</span>
+                            <span id="display-dept"></span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="glass-effect rounded-2xl p-3 text-center">
+                            <p class="text-[8px] uppercase opacity-60 font-bold mb-1">อายุงาน</p>
+                            <p id="stat-tenure" class="text-sm font-bold tracking-tighter"></p>
+                        </div>
+                        <div class="glass-effect rounded-2xl p-3 text-center">
+                            <p class="text-[8px] uppercase opacity-60 font-bold mb-1">เสื้อ</p>
+                            <p id="stat-shirt" class="text-sm font-bold tracking-tighter"></p>
+                        </div>
+                        <div class="glass-effect rounded-2xl p-3 text-center">
+                            <p class="text-[8px] uppercase opacity-60 font-bold mb-1">รองเท้า</p>
+                            <p id="stat-shoe" class="text-sm font-bold tracking-tighter"></p>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <p class="text-center text-slate-400 text-[10px]">โปรดตรวจสอบข้อมูลให้ถูกต้องก่อนกดยืนยัน</p>
-        </main>
+                <div class="space-y-3">
+                    <button onclick="showRegistrationView(true)" class="w-full bg-maersk text-white font-bold py-5 rounded-3xl flex items-center justify-center gap-3 shadow-lg shadow-blue-100">
+                        แก้ไขข้อมูลไซส์
+                    </button>
+                    <button onclick="location.reload()" class="w-full text-gray-400 text-sm font-medium py-3">ออกจากระบบ</button>
+                </div>
+            </section>
 
-        <footer class="py-6 text-center text-slate-400 text-xs">
-            &copy; 2024 ระบบจัดการพนักงานภายในองค์กร
+            <!-- VIEW: FORM -->
+            <section id="view-form" class="hidden step-transition space-y-6 pb-10">
+                <header>
+                    <h2 class="text-2xl font-bold text-gray-800 tracking-tight">ลงทะเบียนสวัสดิการ</h2>
+                    <p class="text-gray-400 text-sm font-light">จัดเตรียมเครื่องแต่งกายประจำปี 2024</p>
+                </header>
+
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-blue-50 rounded-xl text-maersk">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z"/></svg>
+                        </div>
+                        <label class="text-lg font-bold text-gray-700">เสื้อยูนิฟอร์ม (นิ้ว)</label>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2" id="shirt-grid">
+                        <!-- SS - 5XL -->
+                    </div>
+                    <div id="custom-shirt-container" class="hidden pt-1">
+                        <input type="text" id="custom-shirt-input" placeholder="ระบุรอบอก เช่น 52 นิ้ว..." class="w-full px-5 py-3 bg-gray-50 border-2 border-maersk/20 rounded-2xl outline-none focus:border-maersk transition-all font-semibold">
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-gray-100 rounded-xl text-gray-700">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M21,19.31l-3-1V10c0-1.1-0.9-2-2-2h-3L10.22,4.86C9.88,4.64,9.45,4.72,9.2,5.03L7.75,6.86C7.59,7.05,7.5,7.3,7.5,7.55V11 H3v7c0,1.1,0.9,2,2,2h15c0.55,0,1-0.45,1-1V19.31z"/></svg>
+                        </div>
+                        <label class="text-lg font-bold text-gray-700">รองเท้าเซฟตี้ (EU)</label>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2" id="shoe-grid"></div>
+                </div>
+
+                <div class="pt-4">
+                    <button onclick="submitData()" id="submit-btn" class="w-full bg-maersk text-white font-bold py-5 rounded-3xl shadow-xl shadow-blue-100 text-lg">
+                        ยืนยันการลงทะเบียน
+                    </button>
+                    <button onclick="showDashboardOrLogin()" class="w-full text-gray-400 text-xs mt-4">ย้อนกลับ</button>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="p-8 text-center bg-gray-50/50">
+            <p class="text-gray-300 text-[10px] font-bold tracking-[0.4em] uppercase">Maersk Global Service Centre</p>
         </footer>
     </div>
 
-    <!-- Firebase SDK (Modular) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-        // --- Firebase Configuration ---
-        // ใส่ข้อมูลจาก Firebase Console ของคุณตรงนี้
+    <script>
+        // --- Configuration ---
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyCWhf-BRWNMk5C6QzCUJbVVwGgUK9mnMoU",
+            authDomain: "hr-carecenter.firebaseapp.com",
+            projectId: "hr-carecenter",
+            storageBucket: "hr-carecenter.firebasestorage.app",
+            messagingSenderId: "935576170295",
+            appId: "1:935576170295:web:a30e4a6d50eb0b4ff4f4b2",
+            measurementId: "G-SBVW3ZDY7K"
         };
+        const liffId = "2009930285-1b2B5ytM";
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'maersk-registration';
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        // --- Initialize Firebase ---
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        // State
-        let lineUserId = "";
-        let currentEmployee = null;
+        // --- Local State ---
+        let currentUser = null;
+        const SHIRT_SIZES = [
+            { label: 'SS', chest: 34 }, { label: 'S', chest: 36 }, { label: 'M', chest: 38 },
+            { label: 'L', chest: 40 }, { label: 'XL', chest: 42 }, { label: '2XL', chest: 44 },
+            { label: '3XL', chest: 46 }, { label: '4XL', chest: 48 }, { label: '5XL', chest: 50 }
+        ];
 
-        // Initialize LIFF
-        async function initLiff() {
+        // --- Initial Load ---
+        window.onload = async () => {
             try {
-                await liff.init({ liffId: "YOUR_LIFF_ID" }); // ใส่ LIFF ID ของคุณ
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                } else {
+                // Initialize LIFF
+                await liff.init({ liffId });
+                if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
-                    lineUserId = profile.userId;
-                    document.getElementById('loading-overlay').classList.add('hidden');
+                    document.getElementById('line-profile').classList.remove('hidden');
+                    document.getElementById('line-avatar').src = profile.pictureUrl;
+                    document.getElementById('line-name').innerText = profile.displayName;
                 }
-            } catch (error) {
-                console.error("LIFF Init Error:", error);
-                alert("ไม่สามารถเชื่อมต่อกับ LINE ได้");
-            }
-        }
 
-        // Verify Employee Logic
-        window.handleVerifyEmployee = async () => {
-            const empId = document.getElementById('emp-id-input').value.trim();
-            if (!empId) {
-                alert("กรุณากรอกรหัสพนักงาน");
-                return;
-            }
+                // Anonymous Auth for Firestore Access
+                await auth.signInAnonymously();
+                
+                // Build UI Grids
+                renderGrids();
+                
+                // Hide Loading
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('view-login').classList.remove('hidden');
 
-            const btn = document.getElementById('btn-verify');
-            const btnText = document.getElementById('btn-verify-text');
-            
-            btn.disabled = true;
-            btnText.innerText = "กำลังตรวจสอบ...";
-
-            try {
-                // ค้นหาใน collection employee_master โดยใช้ ID เป็นรหัสพนักงาน
-                const docRef = doc(db, "employee_master", empId);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    currentEmployee = { id: empId, ...docSnap.data() };
-                    renderEmployeeInfo(currentEmployee);
-                    document.getElementById('step-1').classList.add('hidden');
-                    document.getElementById('step-2').classList.remove('hidden');
-                } else {
-                    alert("ไม่พบรหัสพนักงานนี้ในฐานข้อมูล");
-                    btn.disabled = false;
-                    btnText.innerText = "ตรวจสอบรหัสพนักงาน";
-                }
-            } catch (error) {
-                console.error("Firebase Error:", error);
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
-                btn.disabled = false;
-                btnText.innerText = "ตรวจสอบรหัสพนักงาน";
+            } catch (err) {
+                console.error("Init Error:", err);
+                Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่ภายหลัง', 'error');
             }
         };
 
-        // UI Rendering
-        function renderEmployeeInfo(data) {
-            document.getElementById('display-full-name').innerText = `${data.name} ${data.surname}`;
-            document.getElementById('display-dept').innerText = data.department || "ไม่ระบุ";
-            document.getElementById('display-pos').innerText = data.position || "ไม่ระบุ";
-            
-            // อายุงาน Calculation
-            if (data.startDate) {
-                const start = new Date(data.startDate);
-                const now = new Date();
-                const years = now.getFullYear() - start.getFullYear();
-                const months = now.getMonth() - start.getMonth();
-                const totalMonths = (years * 12) + months;
-                
-                const displayYears = Math.floor(totalMonths / 12);
-                const displayMonths = totalMonths % 12;
-                document.getElementById('display-tenure').innerText = `${displayYears} ปี ${displayMonths} เดือน`;
+        function renderGrids() {
+            // Shirt Grid
+            const sGrid = document.getElementById('shirt-grid');
+            SHIRT_SIZES.forEach(s => {
+                sGrid.innerHTML += `
+                    <label class="cursor-pointer">
+                        <input type="radio" name="shirt-size" value="${s.label} (${s.chest}\")" onclick="toggleCustomShirt(false)" class="hidden custom-radio">
+                        <div class="py-2.5 text-center border-2 border-gray-100 rounded-2xl font-bold text-gray-400 transition-all text-sm">${s.label}<br><span class="text-[9px] font-normal opacity-70">อก ${s.chest}"</span></div>
+                    </label>`;
+            });
+            sGrid.innerHTML += `
+                <label class="cursor-pointer col-span-3">
+                    <input type="radio" name="shirt-size" value="CUSTOM" onclick="toggleCustomShirt(true)" class="hidden custom-radio">
+                    <div class="py-3 text-center border-2 border-gray-100 rounded-2xl font-bold text-gray-400 transition-all text-sm italic">อื่นๆ (ระบุรอบอกเอง)</div>
+                </label>`;
+
+            // Shoe Grid
+            const shoeGrid = document.getElementById('shoe-grid');
+            for (let i = 36; i <= 48; i++) {
+                shoeGrid.innerHTML += `
+                    <label class="cursor-pointer">
+                        <input type="radio" name="shoe-size" value="${i}" class="hidden custom-radio">
+                        <div class="py-2.5 text-center border-2 border-gray-100 rounded-xl font-bold text-gray-400 text-sm transition-all">${i}</div>
+                    </label>`;
             }
         }
 
-        // Handle Registration
-        window.handleRegistration = async (e) => {
-            e.preventDefault();
-            const selectedSize = document.querySelector('input[name="shirt-size"]:checked')?.value;
-            
-            if (!selectedSize) {
-                alert("กรุณาเลือกไซส์เสื้อ");
+        async function handleLogin() {
+            const idInput = document.getElementById('emp-id-input');
+            const id = idInput.value.trim();
+
+            if (id.length !== 7) {
+                Swal.fire({ icon: 'warning', title: 'รหัสพนักงานไม่ครบ', text: 'กรุณากรอกรหัสพนักงานให้ครบ 7 หลัก', confirmButtonColor: '#007EB3' });
                 return;
             }
 
-            const btn = document.getElementById('btn-submit');
-            btn.disabled = true;
-            btn.innerText = "กำลังบันทึก...";
+            Swal.fire({ title: 'กำลังตรวจสอบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // บันทึกข้อมูลลง collection registrations
-                // ใช้ lineUserId เป็น Doc ID เพื่อให้ 1 คนลงทะเบียนได้ครั้งเดียว
-                await setDoc(doc(db, "registrations", lineUserId), {
-                    lineUserId: lineUserId,
-                    empId: currentEmployee.id,
-                    fullName: `${currentEmployee.name} ${currentEmployee.surname}`,
-                    tshirtSize: selectedSize,
-                    timestamp: serverTimestamp()
+                // Rule 1: Always use the designated path
+                const docPath = `artifacts/${APP_ID}/public/data/employees`;
+                const docRef = db.collection(docPath).doc(id);
+                const doc = await docRef.get();
+
+                if (doc.exists) {
+                    currentUser = { id, ...doc.data() };
+                    // Check if already registered sizes
+                    if (currentUser.shirtSize) {
+                        showDashboard();
+                        Swal.close();
+                    } else {
+                        showRegistrationView();
+                        Swal.close();
+                    }
+                } else {
+                    // สำหรับเดโม: ถ้าไม่พบรหัส จะอนุญาตให้สร้างใหม่ (ในงานจริงควรดึงจากระบบ HR)
+                    Swal.fire({
+                        title: 'ไม่พบข้อมูล',
+                        text: 'รหัสนี้ยังไม่เข้าระบบพนักงาน ต้องการสร้างข้อมูลใหม่สำหรับทดสอบหรือไม่?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'สร้างข้อมูลทดสอบ',
+                        confirmButtonColor: '#007EB3'
+                    }).then(async (result) => {
+                        if(result.isConfirmed) {
+                            const newData = { 
+                                name: "พนักงานทดสอบ", 
+                                dept: "General Operation", 
+                                position: "Staff", 
+                                tenure: "1 ปี",
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            };
+                            await docRef.set(newData);
+                            currentUser = { id, ...newData };
+                            showRegistrationView();
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' + err.message, 'error');
+            }
+        }
+
+        async function submitData() {
+            let shirt = document.querySelector('input[name="shirt-size"]:checked')?.value;
+            const shoe = document.querySelector('input[name="shoe-size"]:checked')?.value;
+
+            if (!shirt || !shoe) {
+                Swal.fire('กรุณาเลือกข้อมูล', 'กรุณาเลือกขนาดเสื้อและรองเท้าให้ครบถ้วน', 'warning');
+                return;
+            }
+
+            if (shirt === 'CUSTOM') {
+                const custom = document.getElementById('custom-shirt-input').value.trim();
+                if (!custom) {
+                    Swal.fire('ระบุไซส์เสื้อ', 'กรุณากรอกรอบอกที่ต้องการ', 'error');
+                    return;
+                }
+                shirt = `สั่งตัด (${custom}")`;
+            }
+
+            document.getElementById('submit-btn').disabled = true;
+            document.getElementById('submit-btn').innerText = "กำลังบันทึก...";
+
+            try {
+                const docPath = `artifacts/${APP_ID}/public/data/employees`;
+                await db.collection(docPath).doc(currentUser.id).update({
+                    shirtSize: shirt,
+                    shoeSize: shoe,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                    lineInfo: liff.isLoggedIn() ? await liff.getProfile() : null
                 });
 
-                alert("ลงทะเบียนสำเร็จ ขอบคุณครับ");
-                liff.closeWindow();
-            } catch (error) {
-                console.error("Save Error:", error);
-                alert("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
-                btn.disabled = false;
-                btn.innerText = "บันทึกการลงทะเบียน";
-            }
-        };
+                currentUser.shirtSize = shirt;
+                currentUser.shoeSize = shoe;
 
-        // Start
-        initLiff();
+                Swal.fire({ title: 'บันทึกสำเร็จ', icon: 'success', timer: 1500 });
+                showDashboard();
+            } catch (err) {
+                Swal.fire('Error', 'บันทึกไม่สำเร็จ: ' + err.message, 'error');
+            } finally {
+                document.getElementById('submit-btn').disabled = false;
+                document.getElementById('submit-btn').innerText = "ยืนยันการลงทะเบียน";
+            }
+        }
+
+        function showDashboard() {
+            hideAll();
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('display-id').innerText = `ID: ${currentUser.id}`;
+            document.getElementById('display-name').innerText = currentUser.name;
+            document.getElementById('display-pos').innerText = currentUser.position;
+            document.getElementById('display-dept').innerText = currentUser.dept;
+            document.getElementById('stat-tenure').innerText = currentUser.tenure;
+            document.getElementById('stat-shirt').innerText = currentUser.shirtSize;
+            document.getElementById('stat-shoe').innerText = currentUser.shoeSize + " EU";
+        }
+
+        function showRegistrationView(isEdit = false) {
+            hideAll();
+            document.getElementById('view-form').classList.remove('hidden');
+        }
+
+        function toggleCustomShirt(show) {
+            const container = document.getElementById('custom-shirt-container');
+            show ? container.classList.remove('hidden') : container.classList.add('hidden');
+        }
+
+        function showDashboardOrLogin() {
+            if (currentUser?.shirtSize) showDashboard();
+            else location.reload();
+        }
+
+        function hideAll() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-form').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     </script>
 </body>
 </html>
