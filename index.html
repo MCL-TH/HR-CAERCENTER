@@ -1,267 +1,505 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
-
-// --- CONFIGURATION ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'maersk-uniform-final';
-
-// จำลอง LINE User ID (ในการใช้งานจริงดึงจาก liff.getContext().userId)
-const LINE_USER_ID = "U_LINE_MEMBER_2024"; 
-
-export default function MaerskApp() {
-  const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState('staff'); // 'staff' | 'superuser'
-  const [view, setView] = useState('loading'); 
-  const [empIdInput, setEmpIdInput] = useState('');
-  const [employeeData, setEmployeeData] = useState(null);
-  const [surveyResult, setSurveyResult] = useState({ shirtSize: '', shoeSize: '', updatedAt: '' });
-  const [alert, setAlert] = useState(null);
-  const [allEmployees, setAllEmployees] = useState([]);
-
-  // Options
-  const shirtSizes = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-  const shoeSizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-
-  useEffect(() => {
-    const init = async () => {
-      await signInAnonymously(auth);
-      await checkLineBinding(LINE_USER_ID);
-      setLoading(false);
-    };
-    init();
-  }, []);
-
-  const showAlert = (title, message, type = 'success') => {
-    setAlert({ title, message, type });
-    setTimeout(() => setAlert(null), 3000);
-  };
-
-  // เช็คว่า Line ID นี้ผูกกับรหัสไหนไว้หรือยัง (Auto-Login)
-  const checkLineBinding = async (lineId) => {
-    const bindingDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bindings', lineId));
-    if (bindingDoc.exists()) {
-      const { empId } = bindingDoc.data();
-      const empDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', empId));
-      if (empDoc.exists()) {
-        setEmployeeData(empDoc.data());
-        const surveyDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', empId));
-        if (surveyDoc.exists()) setSurveyResult(surveyDoc.data());
-        setView('survey');
-        return;
-      }
-    }
-    setView('login');
-  };
-
-  // ตรวจสอบและผูกรหัสพนักงาน
-  const handleLogin = async () => {
-    if (!empIdInput) return;
-    const empDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', empIdInput));
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR C❤️RE CENTER</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- LINE LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    if (empDoc.exists()) {
-      const data = empDoc.data();
-      // เช็คว่ารหัสพนักงานนี้ถูกผูกกับคนอื่นไปหรือยัง (Identity Locking)
-      const lockDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locks', empIdInput));
-      if (lockDoc.exists() && lockDoc.data().lineId !== LINE_USER_ID) {
-        showAlert('รหัสถูกใช้งานแล้ว', 'รหัสนี้ถูกผูกกับ LINE อื่นไปแล้ว กรุณาติดต่อ Admin', 'error');
-        return;
-      }
-      setEmployeeData(data);
-      setView('verify');
-    } else {
-      showAlert('ไม่พบข้อมูล', 'กรุณาตรวจสอบรหัสพนักงานอีกครั้ง', 'error');
-    }
-  };
+    <style>
+        :root { 
+            --maersk-blue: #42B0D5; 
+            --maersk-dark-blue: #007EB3;
+            --maersk-dark: #1E1E1E; 
+            --maersk-light-blue: #E6F2F7; 
+            --brand-red: #FF4D4D;
+        }
+        body { font-family: 'Kanit', 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
+        .bg-maersk { background-color: var(--maersk-blue); }
+        .text-maersk { color: var(--maersk-blue); }
+        .text-brand-red { color: var(--brand-red); }
+        .app-container { max-width: 450px; margin: 0 auto; min-height: 100vh; background: white; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05); }
+        
+        /* Brand Styled Profile Card */
+        .profile-card { 
+            background: linear-gradient(135deg, #42B0D5 0%, #007EB3 100%); 
+            border-radius: 28px; 
+            position: relative; 
+            overflow: hidden; 
+        }
 
-  const confirmIdentity = async () => {
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bindings', LINE_USER_ID), { empId: employeeData.id });
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locks', employeeData.id), { lineId: LINE_USER_ID });
-    const surveyDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', employeeData.id));
-    if (surveyDoc.exists()) setSurveyResult(surveyDoc.data());
-    setView('survey');
-  };
+        .step-transition { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .custom-radio:checked + div { 
+            border-color: var(--maersk-blue); 
+            background-color: var(--maersk-light-blue); 
+            color: var(--maersk-dark-blue); 
+            box-shadow: 0 4px 12px rgba(66, 176, 213, 0.15); 
+        }
+        
+        .glass-effect { background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.18); }
+        
+        .loading-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: white; 
+            z-index: 1000; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            transition: opacity 0.3s ease; 
+        }
 
-  const saveSurvey = async () => {
-    if (!surveyResult.shirtSize || !surveyResult.shoeSize) {
-      showAlert('ข้อมูลไม่ครบ', 'กรุณาเลือกไซส์ให้ครบถ้วน', 'error');
-      return;
-    }
-    const payload = { ...surveyResult, empId: employeeData.id, updatedAt: new Date().toLocaleString('th-TH'), lineId: LINE_USER_ID };
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', employeeData.id), payload);
-    showAlert('สำเร็จ!', 'บันทึกข้อมูลไซส์เรียบร้อยแล้ว');
-  };
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: var(--maersk-blue); border-radius: 10px; }
 
-  const loadAdminData = async () => {
-    const empSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'employees'));
-    const surveySnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'surveys'));
-    const surveys = {};
-    surveySnap.forEach(d => surveys[d.id] = d.data());
-    const list = [];
-    empSnap.forEach(d => list.push({ ...d.data(), survey: surveys[d.id] || null }));
-    setAllEmployees(list);
-  };
+        .brand-title { font-family: 'Inter', 'Kanit', sans-serif; font-weight: 900; letter-spacing: -0.05em; }
+    </style>
+</head>
+<body>
 
-  const exportCSV = () => {
-    let csv = "\ufeffรหัส,ชื่อ,แผนก,ไซส์เสื้อ,รองเท้า,อัปเดตล่าสุด\n";
-    allEmployees.forEach(e => csv += `${e.id},${e.name},${e.dept},${e.survey?.shirtSize || '-'},${e.survey?.shoeSize || '-'},${e.survey?.updatedAt || '-'}\n`);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Maersk_Report_${new Date().toLocaleDateString()}.csv`;
-    link.click();
-  };
-
-  const mockAdminAction = async () => {
-    const mock = [
-      { id: '1008221', name: 'วิภาดา ขยันเรียน', position: 'HR Coord', dept: 'HR' },
-      { id: '1009845', name: 'สมชาย รักงานดี', position: 'Ops Spec', dept: 'Ops' }
-    ];
-    for (const e of mock) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', e.id), e);
-    showAlert('อัปเดตแล้ว', 'ข้อมูลพนักงานถูกอัปเดตเรียบร้อย');
-    if (view === 'admin') loadAdminData();
-  };
-
-  if (loading) return null;
-
-  return (
-    <div className="max-w-[400px] mx-auto min-h-screen bg-[#F8FAFC] font-sans flex flex-col shadow-2xl relative overflow-hidden">
-      
-      {/* Simulation SweetAlert */}
-      {alert && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-[300px] text-center shadow-2xl">
-            <div className={`w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center ${alert.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#007EB3]'}`}>
-               <i className={`fa-solid ${alert.type === 'error' ? 'fa-xmark' : 'fa-check'} text-xl`}></i>
-            </div>
-            <h3 className="font-black text-slate-800 mb-1">{alert.title}</h3>
-            <p className="text-[11px] text-slate-400">{alert.message}</p>
-          </div>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-overlay">
+        <div class="mb-4">
+            <h1 class="brand-title text-3xl text-slate-800">HR C<span class="text-brand-red">❤️</span>RE CENTER</h1>
         </div>
-      )}
-
-      {/* Header */}
-      <header className="bg-white px-4 py-3 flex justify-between items-center border-b sticky top-0 z-50">
-        <div className="flex items-center gap-1.5">
-          <div className="bg-[#007EB3] p-1 rounded-md"><svg width="12" height="12" viewBox="0 0 100 100" fill="white"><path d="M50 15L85 85H15L50 15Z"/></svg></div>
-          <span className="font-black text-[#007EB3] tracking-tighter text-sm">MAERSK</span>
-        </div>
-        <button onClick={() => { 
-          const next = role === 'staff' ? 'superuser' : 'staff'; 
-          setRole(next); setView(next === 'superuser' ? 'admin' : 'login'); 
-          if(next === 'superuser') loadAdminData(); 
-        }} className="text-[8px] font-black px-2 py-1 bg-slate-100 text-slate-400 rounded-full uppercase">
-          Switch to {role === 'staff' ? 'Admin' : 'Staff'}
-        </button>
-      </header>
-
-      <main className="p-4 flex-1 flex flex-col">
-        {view === 'login' && (
-          <div className="flex-1 flex flex-col justify-center animate-in slide-in-from-bottom-4">
-            <h1 className="text-2xl font-black text-slate-900 mb-2">ผูกรหัสพนักงาน</h1>
-            <p className="text-xs text-slate-400 mb-8 text-center">กรอกรหัสพนักงานเพื่อใช้กับ LINE นี้</p>
-            <input type="text" placeholder="Employee ID" value={empIdInput} onChange={e => setEmpIdInput(e.target.value)}
-              className="w-full p-4 bg-white border border-slate-100 rounded-2xl mb-4 font-bold text-center text-lg outline-none focus:ring-2 ring-[#007EB3]/20" />
-            <button onClick={handleLogin} className="w-full bg-[#007EB3] text-white p-4 rounded-2xl font-black text-sm shadow-lg shadow-blue-100 active:scale-95 transition-all">ตรวจสอบสิทธิ์</button>
-          </div>
-        )}
-
-        {view === 'verify' && (
-          <div className="animate-in fade-in">
-            <h2 className="text-xl font-black text-slate-900 mb-6 text-center">ตรวจสอบข้อมูล</h2>
-            <div className="bg-white rounded-[28px] p-6 shadow-sm border border-slate-50 mb-6 text-center">
-              <div className="w-12 h-12 bg-blue-50 text-[#007EB3] rounded-xl flex items-center justify-center mx-auto mb-4">
-                <i className="fa-solid fa-user text-xl"></i>
-              </div>
-              <h3 className="font-black text-slate-800 text-sm leading-tight">{employeeData.name}</h3>
-              <p className="text-[10px] font-bold text-[#007EB3] mt-1 uppercase tracking-widest">{employeeData.dept}</p>
-              <div className="mt-4 p-3 bg-orange-50 rounded-xl">
-                 <p className="text-[9px] text-orange-600 font-bold leading-relaxed">รหัสนี้จะถูกผูกกับ LINE ของคุณ และคนอื่นจะไม่สามารถใช้รหัสนี้ได้</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setView('login')} className="flex-1 py-4 bg-white border border-slate-100 text-slate-300 font-black text-[10px] rounded-2xl uppercase">กลับ</button>
-              <button onClick={confirmIdentity} className="flex-[2] py-4 bg-[#007EB3] text-white font-black text-[10px] rounded-2xl shadow-lg uppercase tracking-widest">ยืนยันรหัสนี้</button>
-            </div>
-          </div>
-        )}
-
-        {view === 'survey' && (
-          <div className="animate-in fade-in pb-10">
-            <div className="bg-white rounded-[28px] p-4 flex items-center justify-between border border-slate-50 mb-6">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 text-[#007EB3]">
-                  <i className="fa-solid fa-id-card"></i>
-                </div>
-                <div className="overflow-hidden">
-                  <h2 className="text-slate-900 font-bold text-sm truncate leading-tight">{employeeData.name}</h2>
-                  <p className="text-slate-400 text-[10px] truncate">{employeeData.position}</p>
-                </div>
-              </div>
-              <div className="text-right flex-shrink-0 pl-2">
-                <span className="text-[8px] font-black text-[#007EB3] uppercase tracking-tighter block opacity-60">Emp ID</span>
-                <span className="text-base font-black text-[#007EB3] tracking-tighter leading-none">{employeeData.id}</span>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3 ml-2">1. Shirt Size</p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {shirtSizes.map(s => (
-                    <button key={s} onClick={() => setSurveyResult({...surveyResult, shirtSize: s})}
-                      className={`py-3.5 rounded-xl font-black text-xs border transition-all ${surveyResult.shirtSize === s ? 'bg-[#007EB3] text-white' : 'bg-white text-slate-400 border-slate-50'}`}>{s}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3 ml-2">2. Shoe Size (EU)</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {shoeSizes.map(s => (
-                    <button key={s} onClick={() => setSurveyResult({...surveyResult, shoeSize: s})}
-                      className={`py-3 rounded-xl font-black text-[10px] border transition-all ${surveyResult.shoeSize === s ? 'bg-[#007EB3] text-white' : 'bg-white text-slate-400 border-slate-50'}`}>{s}</button>
-                  ))}
-                </div>
-              </div>
-              <button onClick={saveSurvey} className="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all mt-4 uppercase">บันทึกข้อมูล</button>
-              {surveyResult.updatedAt && <p className="text-center text-[9px] font-bold text-slate-300 mt-2">อัปเดตเมื่อ: {surveyResult.updatedAt}</p>}
-            </div>
-          </div>
-        )}
-
-        {view === 'admin' && (
-          <div className="animate-in slide-in-from-right-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-black text-slate-900 uppercase">Admin Portal</h2>
-              <div className="flex gap-2">
-                <button onClick={mockAdminAction} className="w-8 h-8 bg-blue-50 text-[#007EB3] rounded-lg flex items-center justify-center"><i className="fa-solid fa-cloud-arrow-up text-[10px]"></i></button>
-                <button onClick={exportCSV} className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center"><i className="fa-solid fa-file-excel text-[10px]"></i></button>
-              </div>
-            </div>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {allEmployees.map(e => (
-                <div key={e.id} className="bg-white p-3 rounded-2xl border border-slate-50 flex items-center justify-between gap-3">
-                  <div className="overflow-hidden">
-                    <p className="text-[11px] font-bold text-slate-800 truncate">{e.name}</p>
-                    <p className="text-[9px] text-slate-300 uppercase font-black">{e.id} • {e.dept}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {e.survey ? <span className="bg-blue-50 text-[#007EB3] text-[9px] font-black px-2 py-0.5 rounded uppercase">{e.survey.shirtSize}/{e.survey.shoeSize}</span> : <span className="text-[9px] font-black text-slate-200">Wait</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
-
-      <footer className="mt-auto py-4 text-center opacity-40">
-        <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-400">Maersk Operational Excellence</p>
-      </footer>
+        <p class="text-slate-400 font-bold tracking-[0.3em] animate-pulse uppercase text-[10px]">System Loading</p>
     </div>
-  );
-}
+
+    <div class="app-container flex flex-col relative overflow-hidden min-h-screen">
+        
+        <!-- Navbar -->
+        <header class="p-6 flex justify-between items-center bg-white border-b border-gray-50 sticky top-0 z-50">
+            <div class="flex flex-col">
+                <h1 class="brand-title text-xl text-slate-800 leading-none">HR C<span class="text-brand-red">❤️</span>RE CENTER</h1>
+                <span class="text-[8px] font-bold text-maersk uppercase tracking-[0.2em] mt-1">Employee Welfare Portal</span>
+            </div>
+            <div id="line-profile" class="flex items-center gap-2 hidden">
+                <img id="line-avatar" src="" class="w-8 h-8 rounded-full border-2 border-sky-100 shadow-sm">
+                <div class="flex flex-col">
+                    <span id="line-name" class="text-[10px] font-bold text-slate-700 truncate max-w-[70px] leading-none"></span>
+                    <span class="text-[8px] text-sky-500 font-bold uppercase tracking-tighter">Verified</span>
+                </div>
+                <button onclick="toggleAdminView()" id="admin-trigger" class="hidden ml-1 w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
+                    <i class="fa-solid fa-shield-halved text-[10px]"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-grow flex flex-col p-6">
+            
+            <!-- VIEW: LOGIN -->
+            <section id="view-login" class="step-transition flex flex-col items-center justify-center py-12 hidden">
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-black text-slate-800 tracking-tight mb-2">ยินยันตัวตน</h2>
+                    <p class="text-slate-400 font-light text-sm">กรุณาระบุรหัสพนักงาน 7 หลักของคุณ</p>
+                </div>
+                <div class="w-full space-y-4">
+                    <div class="relative">
+                        <input type="text" id="emp-id-input" maxlength="7" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="0000000" 
+                            class="w-full px-6 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] focus:border-maersk focus:bg-white outline-none transition-all text-3xl font-black text-center text-slate-700 tracking-widest placeholder:text-slate-100">
+                    </div>
+                    <button onclick="handleLogin()" id="login-btn" class="w-full bg-[#007EB3] text-white font-bold py-5 rounded-[2rem] shadow-xl shadow-sky-100 active:scale-95 transition-all flex items-center justify-center gap-3">
+                        <span class="text-lg">เข้าสู่ระบบ</span>
+                        <i class="fa-solid fa-chevron-right text-xs opacity-50"></i>
+                    </button>
+                    <p class="text-[10px] text-center text-slate-300 mt-8 uppercase tracking-[0.3em] font-medium italic">Identity Provider System</p>
+                </div>
+            </section>
+
+            <!-- VIEW: DASHBOARD -->
+            <section id="view-dashboard" class="hidden step-transition space-y-6">
+                <div class="profile-card p-8 text-white shadow-2xl shadow-sky-100">
+                    <div class="flex justify-between items-start mb-10">
+                        <h2 class="brand-title text-sm tracking-tighter">HR C<span class="text-white">❤️</span>RE</h2>
+                        <div class="text-right">
+                            <p id="display-id" class="text-xs font-black opacity-80 tracking-widest"></p>
+                            <p class="text-[9px] opacity-60 uppercase font-bold mt-0.5 tracking-tighter">Verified Identity</p>
+                        </div>
+                    </div>
+                    <div class="space-y-1 mb-10">
+                        <h3 id="display-name" class="text-2xl font-bold tracking-tight"></h3>
+                        <div class="flex items-center gap-2 text-white/80 text-sm">
+                            <span id="display-pos" class="font-medium"></span>
+                            <span class="opacity-30">|</span>
+                            <span id="display-dept" class="opacity-90"></span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="glass-effect rounded-2xl p-3 text-center">
+                            <p class="text-[8px] uppercase opacity-70 font-black mb-1 tracking-tighter">อายุงาน</p>
+                            <p id="stat-tenure" class="text-[11px] font-bold tracking-tighter">-</p>
+                        </div>
+                        <div class="glass-effect rounded-2xl p-3 text-center">
+                            <p class="text-[8px] uppercase opacity-70 font-black mb-1 tracking-tighter">ไซส์เสื้อ</p>
+                            <p id="stat-shirt" class="text-[11px] font-bold tracking-tighter">-</p>
+                        </div>
+                        <div class="glass-effect rounded-2xl p-3 text-center">
+                            <p class="text-[8px] uppercase opacity-70 font-black mb-1 tracking-tighter">รองเท้า</p>
+                            <p id="stat-shoe" class="text-[11px] font-bold tracking-tighter">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <button onclick="showRegistrationView(true)" class="w-full bg-white border-2 border-slate-100 text-slate-800 font-bold py-5 rounded-[2rem] flex items-center justify-center gap-3 hover:border-maersk hover:text-maersk active:scale-95 transition-all shadow-sm">
+                        <i class="fa-solid fa-pen-to-square text-sm opacity-40"></i>
+                        อัปเดตข้อมูลขนาดตัว
+                    </button>
+                    <button onclick="location.reload()" class="w-full text-slate-300 text-[10px] font-bold py-4 hover:text-red-400 transition-colors uppercase tracking-widest">Logout / Switch Account</button>
+                </div>
+            </section>
+
+            <!-- VIEW: FORM -->
+            <section id="view-form" class="hidden step-transition space-y-6 pb-10">
+                <header class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center flex-shrink-0 text-maersk">
+                        <i class="fa-solid fa-list-check text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight leading-none">ลงทะเบียนยูนิฟอร์ม</h2>
+                        <p class="text-slate-400 text-xs mt-1">เลือกขนาดที่เหมาะสมกับการใช้งาน</p>
+                    </div>
+                </header>
+
+                <div class="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <label class="text-md font-bold text-slate-700">เสื้อพนักงาน (นิ้ว)</label>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2" id="shirt-grid"></div>
+                    <div id="custom-shirt-container" class="hidden pt-1">
+                        <input type="text" id="custom-shirt-input" placeholder="ระบุรอบอก เช่น 52 นิ้ว..." 
+                            class="w-full px-5 py-4 bg-white border-2 border-maersk/20 rounded-2xl outline-none focus:border-maersk transition-all font-bold text-slate-700">
+                    </div>
+                </div>
+
+                <div class="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <label class="text-md font-bold text-slate-700">รองเท้าเซฟตี้ (EU)</label>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2" id="shoe-grid"></div>
+                </div>
+
+                <div class="pt-6">
+                    <button onclick="submitData()" id="submit-btn" class="w-full bg-[#007EB3] text-white font-bold py-5 rounded-[2rem] shadow-xl shadow-sky-100 text-lg active:scale-95 transition-all">
+                        บันทึกข้อมูล
+                    </button>
+                    <button onclick="showDashboardOrLogin()" class="w-full text-slate-300 text-[10px] font-bold uppercase tracking-[0.3em] mt-8">Cancel and Return</button>
+                </div>
+            </section>
+
+            <!-- VIEW: ADMIN PANEL -->
+            <section id="view-admin" class="hidden step-transition space-y-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-8 bg-maersk rounded-full"></div>
+                        <h2 class="text-xl font-bold text-slate-800 uppercase tracking-tighter">Admin Console</h2>
+                    </div>
+                </div>
+                <div id="admin-stats" class="grid grid-cols-2 gap-3"></div>
+                <div class="bg-slate-50 rounded-[2rem] p-4 max-h-[450px] overflow-y-auto space-y-3 border border-slate-100" id="admin-list"></div>
+                <button onclick="showDashboardOrLogin()" class="w-full py-4 text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Back to Home</button>
+            </section>
+
+        </main>
+        
+        <footer class="p-8 text-center bg-white mt-auto border-t border-gray-50">
+            <p class="text-slate-300 text-[8px] font-black tracking-[0.4em] uppercase opacity-80">HR C❤️RE CENTER • Welfare Support</p>
+        </footer>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCWhf-BRWNMk5C6QzCUJbVVwGgUK9mnMoU",
+            authDomain: "hr-carecenter.firebaseapp.com",
+            projectId: "hr-carecenter",
+            storageBucket: "hr-carecenter.firebasestorage.app",
+            messagingSenderId: "935576170295",
+            appId: "1:935576170295:web:a30e4a6d50eb0b4ff4f4b2"
+        };
+        
+        const liffId = "2009930285-1b2B5ytM";
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'maersk-prod-v2';
+        const ADMIN_IDS = ['1000000', '1008221']; 
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let lineUser = null;
+        const SHIRT_SIZES = [
+            { label: 'SS', chest: 34 }, { label: 'S', chest: 36 }, { label: 'M', chest: 38 },
+            { label: 'L', chest: 40 }, { label: 'XL', chest: 42 }, { label: '2XL', chest: 44 },
+            { label: '3XL', chest: 46 }, { label: '4XL', chest: 48 }, { label: '5XL', chest: 50 }
+        ];
+
+        window.onload = async () => {
+            try {
+                await liff.init({ liffId });
+                if (liff.isLoggedIn()) {
+                    lineUser = await liff.getProfile();
+                    document.getElementById('line-profile').classList.remove('hidden');
+                    document.getElementById('line-avatar').src = lineUser.pictureUrl;
+                    document.getElementById('line-name').innerText = lineUser.displayName;
+                }
+
+                await auth.signInAnonymously();
+                renderGrids();
+
+                if (lineUser) {
+                    await checkAutoLogin();
+                } else {
+                    showView('view-login');
+                }
+
+                document.getElementById('loading-screen').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 300);
+            } catch (err) {
+                console.error("Init Error:", err);
+                showView('view-login');
+                document.getElementById('loading-screen').style.display = 'none';
+            }
+        };
+
+        async function checkAutoLogin() {
+            const bindingPath = `artifacts/${APP_ID}/public/data/bindings`;
+            const bindDoc = await db.collection(bindingPath).doc(lineUser.userId).get();
+            
+            if (bindDoc.exists) {
+                const empId = bindDoc.data().empId;
+                const empPath = `artifacts/${APP_ID}/public/data/employees`;
+                const empDoc = await db.collection(empPath).doc(empId).get();
+                
+                if (empDoc.exists) {
+                    currentUser = { id: empId, ...empDoc.data() };
+                    if (ADMIN_IDS.includes(empId) || currentUser.role === 'SuperUser') {
+                        document.getElementById('admin-trigger').classList.remove('hidden');
+                    }
+                    showDashboard();
+                    return;
+                }
+            }
+            showView('view-login');
+        }
+
+        function renderGrids() {
+            const sGrid = document.getElementById('shirt-grid');
+            sGrid.innerHTML = '';
+            SHIRT_SIZES.forEach(s => {
+                sGrid.innerHTML += `
+                    <label class="cursor-pointer">
+                        <input type="radio" name="shirt-size" value="${s.label}" onclick="toggleCustomShirt(false)" class="hidden custom-radio">
+                        <div class="py-3 px-1 text-center border-2 border-slate-100 rounded-2xl font-bold text-slate-400 transition-all bg-white">
+                            <p class="text-sm leading-none">${s.label}</p>
+                            <span class="text-[8px] font-normal opacity-50 uppercase tracking-tighter">${s.chest}"</span>
+                        </div>
+                    </label>`;
+            });
+            sGrid.innerHTML += `
+                <label class="cursor-pointer col-span-3">
+                    <input type="radio" name="shirt-size" value="CUSTOM" onclick="toggleCustomShirt(true)" class="hidden custom-radio">
+                    <div class="py-3 text-center border-2 border-slate-100 rounded-2xl font-bold text-slate-400 transition-all text-xs italic bg-white tracking-tight">สั่งตัดพิเศษ</div>
+                </label>`;
+
+            const shoeGrid = document.getElementById('shoe-grid');
+            shoeGrid.innerHTML = '';
+            for (let i = 36; i <= 48; i++) {
+                shoeGrid.innerHTML += `
+                    <label class="cursor-pointer">
+                        <input type="radio" name="shoe-size" value="${i}" class="hidden custom-radio">
+                        <div class="py-3 text-center border-2 border-slate-100 rounded-xl font-bold text-slate-400 text-sm transition-all bg-white">${i}</div>
+                    </label>`;
+            }
+        }
+
+        async function handleLogin() {
+            const idInput = document.getElementById('emp-id-input');
+            const id = idInput.value.trim();
+
+            if (id.length !== 7) {
+                Swal.fire({ icon: 'warning', title: 'รหัสไม่ถูกต้อง', text: 'กรุณากรอกรหัสพนักงาน 7 หลัก', confirmButtonColor: '#42B0D5' });
+                return;
+            }
+
+            Swal.fire({ title: 'ยืนยันตัวตน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const lockPath = `artifacts/${APP_ID}/public/data/locks`;
+                const lockDoc = await db.collection(lockPath).doc(id).get();
+                
+                if (lockDoc.exists && lineUser && lockDoc.data().lineId !== lineUser.userId) {
+                    Swal.fire('Identity Locked', 'รหัสนี้ถูกผูกไว้กับบัญชีอื่นแล้ว', 'error');
+                    return;
+                }
+
+                const empPath = `artifacts/${APP_ID}/public/data/employees`;
+                const empDoc = await db.collection(empPath).doc(id).get();
+
+                if (empDoc.exists) {
+                    currentUser = { id, ...empDoc.data() };
+                    
+                    if (lineUser) {
+                        await db.collection(`artifacts/${APP_ID}/public/data/bindings`).doc(lineUser.userId).set({ empId: id });
+                        await db.collection(lockPath).doc(id).set({ lineId: lineUser.userId });
+                    }
+
+                    if (ADMIN_IDS.includes(id) || currentUser.role === 'SuperUser') {
+                        document.getElementById('admin-trigger').classList.remove('hidden');
+                    }
+
+                    if (currentUser.shirtSize) showDashboard(); else showRegistrationView();
+                    Swal.close();
+                } else {
+                    Swal.fire('ไม่พบข้อมูล', 'ไม่พบรหัสพนักงานในระบบ', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        }
+
+        async function submitData() {
+            let shirt = document.querySelector('input[name="shirt-size"]:checked')?.value;
+            const shoe = document.querySelector('input[name="shoe-size"]:checked')?.value;
+
+            if (!shirt || !shoe) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกขนาดเสื้อและรองเท้า', 'warning');
+                return;
+            }
+
+            if (shirt === 'CUSTOM') {
+                const custom = document.getElementById('custom-shirt-input').value.trim();
+                if (!custom) {
+                    Swal.fire('ระบุไซส์', 'กรุณากรอกขนาดรอบอก', 'error');
+                    return;
+                }
+                shirt = `สั่งตัด (${custom}")`;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
+
+            try {
+                const updateData = {
+                    shirtSize: shirt,
+                    shoeSize: shoe,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                    lineProfile: lineUser || null
+                };
+                
+                await db.collection(`artifacts/${APP_ID}/public/data/employees`).doc(currentUser.id).update(updateData);
+                currentUser = { ...currentUser, ...updateData };
+                
+                Swal.fire({ title: 'สำเร็จ', icon: 'success', timer: 1500, showConfirmButton: false });
+                showDashboard();
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'บันทึกข้อมูล';
+            }
+        }
+
+        function showDashboard() {
+            showView('view-dashboard');
+            document.getElementById('display-id').innerText = `ID: ${currentUser.id}`;
+            document.getElementById('display-name').innerText = currentUser.name;
+            document.getElementById('display-pos').innerText = currentUser.position;
+            document.getElementById('display-dept').innerText = currentUser.dept;
+            document.getElementById('stat-tenure').innerText = currentUser.tenure || '-';
+            document.getElementById('stat-shirt').innerText = currentUser.shirtSize || 'รอระบุ';
+            document.getElementById('stat-shoe').innerText = currentUser.shoeSize ? currentUser.shoeSize + " EU" : 'รอระบุ';
+        }
+
+        function showRegistrationView() {
+            showView('view-form');
+            if (currentUser.shirtSize && !currentUser.shirtSize.includes('สั่งตัด')) {
+                const radio = document.querySelector(`input[name="shirt-size"][value='${currentUser.shirtSize}']`);
+                if (radio) radio.checked = true;
+            }
+            if (currentUser.shoeSize) {
+                const radio = document.querySelector(`input[name="shoe-size"][value='${currentUser.shoeSize}']`);
+                if (radio) radio.checked = true;
+            }
+        }
+
+        async function toggleAdminView() {
+            showView('view-admin');
+            const adminList = document.getElementById('admin-list');
+            adminList.innerHTML = '<p class="text-center text-xs text-slate-300 py-10 italic tracking-widest uppercase">Fetching Data...</p>';
+            
+            try {
+                const snapshot = await db.collection(`artifacts/${APP_ID}/public/data/employees`).get();
+                let html = '';
+                let count = 0;
+
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    if (d.shirtSize) {
+                        count++;
+                        html += `
+                            <div class="bg-white p-4 rounded-2xl flex justify-between items-center border border-slate-50 shadow-sm">
+                                <div class="overflow-hidden">
+                                    <p class="text-[11px] font-bold text-slate-800 truncate">${d.name}</p>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">${doc.id}</p>
+                                </div>
+                                <div class="flex gap-1.5">
+                                    <span class="text-[9px] bg-sky-50 text-maersk px-2 py-1 rounded-lg font-black">${d.shirtSize}</span>
+                                    <span class="text-[9px] bg-slate-100 text-slate-500 px-2 py-1 rounded-lg font-black">${d.shoeSize}</span>
+                                </div>
+                            </div>`;
+                    }
+                });
+
+                document.getElementById('admin-stats').innerHTML = `
+                    <div class="bg-sky-50 p-5 rounded-[2rem] text-center">
+                        <p class="text-[8px] font-black text-maersk uppercase mb-1">Responded</p>
+                        <p class="text-2xl font-black text-maersk tracking-tighter">${count}</p>
+                    </div>
+                    <div class="bg-slate-50 p-5 rounded-[2rem] text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Total</p>
+                        <p class="text-2xl font-black text-slate-800 tracking-tighter">${snapshot.size}</p>
+                    </div>
+                `;
+                adminList.innerHTML = html || '<p class="text-center py-12 text-slate-300 text-xs italic">No data found.</p>';
+            } catch (err) {
+                adminList.innerHTML = '<p class="text-center text-red-400 text-xs">Error loading data.</p>';
+            }
+        }
+
+        function showView(viewId) {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleCustomShirt(show) {
+            const container = document.getElementById('custom-shirt-container');
+            show ? container.classList.remove('hidden') : container.classList.add('hidden');
+        }
+
+        function showDashboardOrLogin() {
+            if (currentUser?.shirtSize) showDashboard(); else showView('view-login');
+        }
+    </script>
+</body>
+</html>
