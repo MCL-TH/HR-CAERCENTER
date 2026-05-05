@@ -1,363 +1,266 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 
-// Firebase configuration
+// --- CONFIGURATION ---
 const firebaseConfig = JSON.parse(__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'maersk-uniform-app';
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'maersk-uniform-final';
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState('staff'); // 'staff' or 'superuser'
-  const [view, setView] = useState('login'); // 'login', 'verify', 'survey', 'admin'
+// จำลอง LINE User ID (ในการใช้งานจริงดึงจาก liff.getContext().userId)
+const LINE_USER_ID = "U_LINE_MEMBER_2024"; 
+
+export default function MaerskApp() {
+  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState('staff'); // 'staff' | 'superuser'
+  const [view, setView] = useState('loading'); 
   const [empIdInput, setEmpIdInput] = useState('');
   const [employeeData, setEmployeeData] = useState(null);
   const [surveyResult, setSurveyResult] = useState({ shirtSize: '', shoeSize: '', updatedAt: '' });
   const [alert, setAlert] = useState(null);
   const [allEmployees, setAllEmployees] = useState([]);
 
-  // Size Options
+  // Options
   const shirtSizes = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
   const shoeSizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 
-  // Auth Initialization
   useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInAnonymously(auth);
-      } else {
-        await signInAnonymously(auth);
-      }
+    const init = async () => {
+      await signInAnonymously(auth);
+      await checkLineBinding(LINE_USER_ID);
+      setLoading(false);
     };
-    initAuth();
+    init();
   }, []);
 
-  // Show simulated SweetAlert
   const showAlert = (title, message, type = 'success') => {
     setAlert({ title, message, type });
     setTimeout(() => setAlert(null), 3000);
   };
 
-  // Login/Find Employee
+  // เช็คว่า Line ID นี้ผูกกับรหัสไหนไว้หรือยัง (Auto-Login)
+  const checkLineBinding = async (lineId) => {
+    const bindingDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bindings', lineId));
+    if (bindingDoc.exists()) {
+      const { empId } = bindingDoc.data();
+      const empDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', empId));
+      if (empDoc.exists()) {
+        setEmployeeData(empDoc.data());
+        const surveyDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', empId));
+        if (surveyDoc.exists()) setSurveyResult(surveyDoc.data());
+        setView('survey');
+        return;
+      }
+    }
+    setView('login');
+  };
+
+  // ตรวจสอบและผูกรหัสพนักงาน
   const handleLogin = async () => {
     if (!empIdInput) return;
-    
-    // In a real app, we fetch from public data collection
     const empDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', empIdInput));
     
     if (empDoc.exists()) {
       const data = empDoc.data();
-      setEmployeeData(data);
-      
-      // Check if already completed survey
-      const surveyDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', empIdInput));
-      if (surveyDoc.exists()) {
-        setSurveyResult(surveyDoc.data());
-      } else {
-        setSurveyResult({ shirtSize: '', shoeSize: '', updatedAt: '' });
+      // เช็คว่ารหัสพนักงานนี้ถูกผูกกับคนอื่นไปหรือยัง (Identity Locking)
+      const lockDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locks', empIdInput));
+      if (lockDoc.exists() && lockDoc.data().lineId !== LINE_USER_ID) {
+        showAlert('รหัสถูกใช้งานแล้ว', 'รหัสนี้ถูกผูกกับ LINE อื่นไปแล้ว กรุณาติดต่อ Admin', 'error');
+        return;
       }
-      
+      setEmployeeData(data);
       setView('verify');
     } else {
-      showAlert('ไม่พบข้อมูล', 'ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบอีกครั้ง', 'error');
+      showAlert('ไม่พบข้อมูล', 'กรุณาตรวจสอบรหัสพนักงานอีกครั้ง', 'error');
     }
   };
 
-  // Save Survey
+  const confirmIdentity = async () => {
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bindings', LINE_USER_ID), { empId: employeeData.id });
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locks', employeeData.id), { lineId: LINE_USER_ID });
+    const surveyDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', employeeData.id));
+    if (surveyDoc.exists()) setSurveyResult(surveyDoc.data());
+    setView('survey');
+  };
+
   const saveSurvey = async () => {
     if (!surveyResult.shirtSize || !surveyResult.shoeSize) {
-      showAlert('ข้อมูลไม่ครบ', 'กรุณาเลือกไซส์เสื้อและรองเท้าให้ครบถ้วน', 'error');
+      showAlert('ข้อมูลไม่ครบ', 'กรุณาเลือกไซส์ให้ครบถ้วน', 'error');
       return;
     }
-
-    const payload = {
-      ...surveyResult,
-      empId: employeeData.id,
-      empName: employeeData.name,
-      updatedAt: new Date().toLocaleString('th-TH'),
-      lineId: employeeData.lineId || 'unlinked' // Future proofing
-    };
-
+    const payload = { ...surveyResult, empId: employeeData.id, updatedAt: new Date().toLocaleString('th-TH'), lineId: LINE_USER_ID };
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', employeeData.id), payload);
-    showAlert('สำเร็จ!', 'บันทึกข้อมูลไซส์ยูนิฟอร์มของคุณเรียบร้อยแล้ว');
-    setView('survey'); // Stay on survey to show updated data
+    showAlert('สำเร็จ!', 'บันทึกข้อมูลไซส์เรียบร้อยแล้ว');
   };
 
-  // Admin: Load All Data
   const loadAdminData = async () => {
     const empSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'employees'));
     const surveySnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'surveys'));
-    
     const surveys = {};
-    surveySnap.forEach(doc => surveys[doc.id] = doc.data());
-    
+    surveySnap.forEach(d => surveys[d.id] = d.data());
     const list = [];
-    empSnap.forEach(doc => {
-      list.push({
-        ...doc.data(),
-        survey: surveys[doc.id] || null
-      });
-    });
+    empSnap.forEach(d => list.push({ ...d.data(), survey: surveys[d.id] || null }));
     setAllEmployees(list);
   };
 
-  // Admin: Export CSV
-  const exportToCSV = () => {
-    let csvContent = "รหัสพนักงาน,ชื่อ,แผนก,ไซส์เสื้อ,ไซส์รองเท้า,วันที่อัปเดต,LineID\n";
-    allEmployees.forEach(emp => {
-      const row = [
-        emp.id,
-        emp.name,
-        emp.dept,
-        emp.survey?.shirtSize || '-',
-        emp.survey?.shoeSize || '-',
-        emp.survey?.updatedAt || '-',
-        emp.lineId || 'ยังไม่ผูก'
-      ].join(",");
-      csvContent += row + "\n";
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+  const exportCSV = () => {
+    let csv = "\ufeffรหัส,ชื่อ,แผนก,ไซส์เสื้อ,รองเท้า,อัปเดตล่าสุด\n";
+    allEmployees.forEach(e => csv += `${e.id},${e.name},${e.dept},${e.survey?.shirtSize || '-'},${e.survey?.shoeSize || '-'},${e.survey?.updatedAt || '-'}\n`);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Maersk_Uniform_Report_${new Date().toLocaleDateString()}.csv`);
+    link.href = URL.createObjectURL(blob);
+    link.download = `Maersk_Report_${new Date().toLocaleDateString()}.csv`;
     link.click();
   };
 
-  // Mock Admin: Add/Update Employee
-  const mockImport = async () => {
-    const mockList = [
-      { id: '1008221', name: 'วิภาดา ขยันเรียน', position: 'HR Coordinator', dept: 'HR', lineId: '' },
-      { id: '1009845', name: 'สมชาย รักงานดี', position: 'Logistics Specialist', dept: 'Ops', lineId: '' },
-      { id: '1007722', name: 'มานี มีสุข', position: 'Customer Success', dept: 'CX', lineId: '' }
+  const mockAdminAction = async () => {
+    const mock = [
+      { id: '1008221', name: 'วิภาดา ขยันเรียน', position: 'HR Coord', dept: 'HR' },
+      { id: '1009845', name: 'สมชาย รักงานดี', position: 'Ops Spec', dept: 'Ops' }
     ];
-    
-    for (const emp of mockList) {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', emp.id), emp);
-    }
-    showAlert('Import สำเร็จ', 'อัปเดตข้อมูลพนักงาน 3 รายการเรียบร้อย');
+    for (const e of mock) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', e.id), e);
+    showAlert('อัปเดตแล้ว', 'ข้อมูลพนักงานถูกอัปเดตเรียบร้อย');
     if (view === 'admin') loadAdminData();
   };
 
+  if (loading) return null;
+
   return (
-    <div className="max-w-[450px] mx-auto min-h-screen bg-slate-50 font-sans shadow-2xl flex flex-col relative overflow-hidden">
+    <div className="max-w-[400px] mx-auto min-h-screen bg-[#F8FAFC] font-sans flex flex-col shadow-2xl relative overflow-hidden">
       
-      {/* Alert Component */}
+      {/* Simulation SweetAlert */}
       {alert && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-[320px] text-center shadow-2xl scale-in-center">
-            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${alert.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}>
-              {alert.type === 'error' ? (
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="3" strokeLinecap="round"/></svg>
-              ) : (
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round"/></svg>
-              )}
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-[300px] text-center shadow-2xl">
+            <div className={`w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center ${alert.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#007EB3]'}`}>
+               <i className={`fa-solid ${alert.type === 'error' ? 'fa-xmark' : 'fa-check'} text-xl`}></i>
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">{alert.title}</h3>
-            <p className="text-sm text-slate-500 leading-relaxed">{alert.message}</p>
+            <h3 className="font-black text-slate-800 mb-1">{alert.title}</h3>
+            <p className="text-[11px] text-slate-400">{alert.message}</p>
           </div>
         </div>
       )}
 
       {/* Header */}
-      <header className="bg-white p-5 border-b sticky top-0 z-40 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="bg-[#007EB3] p-1.5 rounded-lg"><svg width="14" height="14" viewBox="0 0 100 100" fill="white"><path d="M50 15L85 85H15L50 15Z"/></svg></div>
-          <span className="font-black text-[#007EB3] tracking-tighter text-sm">MAERSK UNIFORM</span>
+      <header className="bg-white px-4 py-3 flex justify-between items-center border-b sticky top-0 z-50">
+        <div className="flex items-center gap-1.5">
+          <div className="bg-[#007EB3] p-1 rounded-md"><svg width="12" height="12" viewBox="0 0 100 100" fill="white"><path d="M50 15L85 85H15L50 15Z"/></svg></div>
+          <span className="font-black text-[#007EB3] tracking-tighter text-sm">MAERSK</span>
         </div>
-        <button 
-          onClick={() => {
-            const nextRole = role === 'staff' ? 'superuser' : 'staff';
-            setRole(nextRole);
-            setView(nextRole === 'superuser' ? 'admin' : 'login');
-            if (nextRole === 'superuser') loadAdminData();
-          }}
-          className="text-[9px] font-black px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-[#007EB3] hover:text-white transition-all uppercase"
-        >
+        <button onClick={() => { 
+          const next = role === 'staff' ? 'superuser' : 'staff'; 
+          setRole(next); setView(next === 'superuser' ? 'admin' : 'login'); 
+          if(next === 'superuser') loadAdminData(); 
+        }} className="text-[8px] font-black px-2 py-1 bg-slate-100 text-slate-400 rounded-full uppercase">
           Switch to {role === 'staff' ? 'Admin' : 'Staff'}
         </button>
       </header>
 
-      <main className="flex-1 p-6 flex flex-col">
-        {/* LOGIN VIEW */}
+      <main className="p-4 flex-1 flex flex-col">
         {view === 'login' && (
           <div className="flex-1 flex flex-col justify-center animate-in slide-in-from-bottom-4">
-            <div className="mb-10 text-center">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">เข้าสู่ระบบ</h1>
-              <p className="text-sm text-slate-400">กรุณากรอกรหัสพนักงานเพื่อเริ่มการสำรวจ</p>
-            </div>
-            <div className="space-y-4">
-              <div className="bg-white rounded-[24px] p-2 border border-slate-200 shadow-sm focus-within:ring-2 ring-[#007EB3]/20 transition-all">
-                <input 
-                  type="text" 
-                  placeholder="รหัสพนักงาน (เช่น 1008221)" 
-                  value={empIdInput}
-                  onChange={(e) => setEmpIdInput(e.target.value)}
-                  className="w-full p-4 bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-300"
-                />
-              </div>
-              <button 
-                onClick={handleLogin}
-                className="w-full bg-[#007EB3] text-white p-5 rounded-[24px] font-black text-sm shadow-lg shadow-blue-200 active:scale-95 transition-all"
-              >
-                ตรวจสอบข้อมูล
-              </button>
-            </div>
+            <h1 className="text-2xl font-black text-slate-900 mb-2">ผูกรหัสพนักงาน</h1>
+            <p className="text-xs text-slate-400 mb-8 text-center">กรอกรหัสพนักงานเพื่อใช้กับ LINE นี้</p>
+            <input type="text" placeholder="Employee ID" value={empIdInput} onChange={e => setEmpIdInput(e.target.value)}
+              className="w-full p-4 bg-white border border-slate-100 rounded-2xl mb-4 font-bold text-center text-lg outline-none focus:ring-2 ring-[#007EB3]/20" />
+            <button onClick={handleLogin} className="w-full bg-[#007EB3] text-white p-4 rounded-2xl font-black text-sm shadow-lg shadow-blue-100 active:scale-95 transition-all">ตรวจสอบสิทธิ์</button>
           </div>
         )}
 
-        {/* VERIFY VIEW */}
         {view === 'verify' && (
-          <div className="animate-in fade-in duration-500">
-            <h2 className="text-2xl font-black text-slate-900 mb-6">ยืนยันตัวตน</h2>
-            <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 mb-6">
-              <div className="flex flex-col items-center text-center mb-8">
-                <div className="w-20 h-20 bg-blue-50 text-[#007EB3] rounded-[28px] flex items-center justify-center mb-4">
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeWidth="1.5"/></svg>
-                </div>
-                <h3 className="text-xl font-black text-slate-800 leading-tight">{employeeData.name}</h3>
-                <p className="text-xs font-bold text-[#007EB3] mt-1 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">{employeeData.position}</p>
+          <div className="animate-in fade-in">
+            <h2 className="text-xl font-black text-slate-900 mb-6 text-center">ตรวจสอบข้อมูล</h2>
+            <div className="bg-white rounded-[28px] p-6 shadow-sm border border-slate-50 mb-6 text-center">
+              <div className="w-12 h-12 bg-blue-50 text-[#007EB3] rounded-xl flex items-center justify-center mx-auto mb-4">
+                <i className="fa-solid fa-user text-xl"></i>
               </div>
-              <div className="space-y-4 border-t pt-6">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-400 font-bold uppercase text-[10px]">รหัสพนักงาน</span>
-                  <span className="font-black text-slate-700">{employeeData.id}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-400 font-bold uppercase text-[10px]">แผนก</span>
-                  <span className="font-black text-slate-700">{employeeData.dept}</span>
-                </div>
+              <h3 className="font-black text-slate-800 text-sm leading-tight">{employeeData.name}</h3>
+              <p className="text-[10px] font-bold text-[#007EB3] mt-1 uppercase tracking-widest">{employeeData.dept}</p>
+              <div className="mt-4 p-3 bg-orange-50 rounded-xl">
+                 <p className="text-[9px] text-orange-600 font-bold leading-relaxed">รหัสนี้จะถูกผูกกับ LINE ของคุณ และคนอื่นจะไม่สามารถใช้รหัสนี้ได้</p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setView('login')} className="flex-1 bg-white border border-slate-200 p-5 rounded-[24px] font-black text-slate-400 text-sm active:scale-95 transition-all">ย้อนกลับ</button>
-              <button onClick={() => setView('survey')} className="flex-[2] bg-[#007EB3] text-white p-5 rounded-[24px] font-black text-sm shadow-lg active:scale-95 transition-all uppercase tracking-widest">ยืนยัน & เริ่ม</button>
+            <div className="flex gap-2">
+              <button onClick={() => setView('login')} className="flex-1 py-4 bg-white border border-slate-100 text-slate-300 font-black text-[10px] rounded-2xl uppercase">กลับ</button>
+              <button onClick={confirmIdentity} className="flex-[2] py-4 bg-[#007EB3] text-white font-black text-[10px] rounded-2xl shadow-lg uppercase tracking-widest">ยืนยันรหัสนี้</button>
             </div>
           </div>
         )}
 
-        {/* SURVEY VIEW */}
         {view === 'survey' && (
-          <div className="animate-in slide-in-from-right-8 duration-500 pb-10">
-            <div className="flex justify-between items-end mb-8">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">เลือกขนาดของคุณ</h2>
-                <p className="text-xs text-slate-400 mt-1">ประจำปี 2024</p>
-              </div>
-              {surveyResult.updatedAt && (
-                <div className="text-right">
-                  <span className="text-[8px] font-black text-green-500 uppercase block mb-1">ทำรายการเมื่อ</span>
-                  <span className="text-[10px] font-bold text-slate-400">{surveyResult.updatedAt}</span>
+          <div className="animate-in fade-in pb-10">
+            <div className="bg-white rounded-[28px] p-4 flex items-center justify-between border border-slate-50 mb-6">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 text-[#007EB3]">
+                  <i className="fa-solid fa-id-card"></i>
                 </div>
-              )}
+                <div className="overflow-hidden">
+                  <h2 className="text-slate-900 font-bold text-sm truncate leading-tight">{employeeData.name}</h2>
+                  <p className="text-slate-400 text-[10px] truncate">{employeeData.position}</p>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="text-[8px] font-black text-[#007EB3] uppercase tracking-tighter block opacity-60">Emp ID</span>
+                <span className="text-base font-black text-[#007EB3] tracking-tighter leading-none">{employeeData.id}</span>
+              </div>
             </div>
 
-            <div className="space-y-8">
-              {/* Shirt Section */}
+            <div className="space-y-6">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">1. ขนาดเสื้อ (Shirt Size)</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {shirtSizes.map(size => (
-                    <button 
-                      key={size}
-                      onClick={() => setSurveyResult(prev => ({...prev, shirtSize: size}))}
-                      className={`py-4 rounded-2xl font-black text-sm transition-all border ${
-                        surveyResult.shirtSize === size ? 'bg-[#007EB3] text-white border-[#007EB3] shadow-md' : 'bg-white text-slate-400 border-slate-100'
-                      }`}
-                    >
-                      {size}
-                    </button>
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3 ml-2">1. Shirt Size</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {shirtSizes.map(s => (
+                    <button key={s} onClick={() => setSurveyResult({...surveyResult, shirtSize: s})}
+                      className={`py-3.5 rounded-xl font-black text-xs border transition-all ${surveyResult.shirtSize === s ? 'bg-[#007EB3] text-white' : 'bg-white text-slate-400 border-slate-50'}`}>{s}</button>
                   ))}
                 </div>
               </div>
-
-              {/* Shoe Section */}
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">2. ขนาดรองเท้า (Shoe Size - EU)</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {shoeSizes.map(size => (
-                    <button 
-                      key={size}
-                      onClick={() => setSurveyResult(prev => ({...prev, shoeSize: size}))}
-                      className={`py-4 rounded-xl font-black text-xs transition-all border ${
-                        surveyResult.shoeSize === size ? 'bg-[#007EB3] text-white border-[#007EB3] shadow-md' : 'bg-white text-slate-400 border-slate-100'
-                      }`}
-                    >
-                      {size}
-                    </button>
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3 ml-2">2. Shoe Size (EU)</p>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {shoeSizes.map(s => (
+                    <button key={s} onClick={() => setSurveyResult({...surveyResult, shoeSize: s})}
+                      className={`py-3 rounded-xl font-black text-[10px] border transition-all ${surveyResult.shoeSize === s ? 'bg-[#007EB3] text-white' : 'bg-white text-slate-400 border-slate-50'}`}>{s}</button>
                   ))}
                 </div>
               </div>
-
-              <div className="pt-6 space-y-3">
-                <button 
-                  onClick={saveSurvey}
-                  className="w-full bg-slate-900 text-white p-5 rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-widest"
-                >
-                  {surveyResult.updatedAt ? 'อัปเดตข้อมูล' : 'บันทึกข้อมูล'}
-                </button>
-                <button 
-                  onClick={() => setView('login')}
-                  className="w-full py-4 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-slate-600 transition-all"
-                >
-                  ออกจากระบบ
-                </button>
-              </div>
+              <button onClick={saveSurvey} className="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all mt-4 uppercase">บันทึกข้อมูล</button>
+              {surveyResult.updatedAt && <p className="text-center text-[9px] font-bold text-slate-300 mt-2">อัปเดตเมื่อ: {surveyResult.updatedAt}</p>}
             </div>
           </div>
         )}
 
-        {/* ADMIN VIEW */}
         {view === 'admin' && (
-          <div className="animate-in slide-in-from-top-4 duration-500">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-slate-900">Admin Console</h2>
+          <div className="animate-in slide-in-from-right-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-black text-slate-900 uppercase">Admin Portal</h2>
               <div className="flex gap-2">
-                <button onClick={mockImport} className="p-2 bg-blue-50 text-[#007EB3] rounded-lg" title="Import Mock Data"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeWidth="2"/></svg></button>
-                <button onClick={exportToCSV} className="p-2 bg-green-50 text-green-600 rounded-lg" title="Export CSV"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeWidth="2"/></svg></button>
+                <button onClick={mockAdminAction} className="w-8 h-8 bg-blue-50 text-[#007EB3] rounded-lg flex items-center justify-center"><i className="fa-solid fa-cloud-arrow-up text-[10px]"></i></button>
+                <button onClick={exportCSV} className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center"><i className="fa-solid fa-file-excel text-[10px]"></i></button>
               </div>
             </div>
-
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              {allEmployees.length === 0 ? (
-                <div className="text-center py-20 text-slate-300 italic text-sm font-bold">ไม่มีข้อมูลพนักงาน (กรุณากด Import)</div>
-              ) : (
-                allEmployees.map(emp => (
-                  <div key={emp.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
-                    <div className="overflow-hidden">
-                      <p className="text-xs font-black text-slate-900 truncate">{emp.name}</p>
-                      <p className="text-[10px] text-slate-400 font-bold tracking-tight">{emp.id} • {emp.dept}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {emp.survey ? (
-                        <div className="flex gap-1">
-                          <span className="bg-blue-50 text-[#007EB3] text-[9px] font-black px-2 py-0.5 rounded uppercase">{emp.survey.shirtSize}</span>
-                          <span className="bg-slate-100 text-slate-600 text-[9px] font-black px-2 py-0.5 rounded uppercase">{emp.survey.shoeSize}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[9px] font-black text-slate-300 uppercase">Pending</span>
-                      )}
-                    </div>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {allEmployees.map(e => (
+                <div key={e.id} className="bg-white p-3 rounded-2xl border border-slate-50 flex items-center justify-between gap-3">
+                  <div className="overflow-hidden">
+                    <p className="text-[11px] font-bold text-slate-800 truncate">{e.name}</p>
+                    <p className="text-[9px] text-slate-300 uppercase font-black">{e.id} • {e.dept}</p>
                   </div>
-                ))
-              )}
-            </div>
-            
-            <div className="mt-8 p-4 bg-slate-900 rounded-[24px] text-white">
-              <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">Future Proof: Line ID Linking</h4>
-              <p className="text-[10px] text-white/50 leading-relaxed">ระบบพร้อมสำหรับเชื่อมต่อ Line ID (1:1 Mapping) ข้อมูลใน Export จะรวมฟิลด์ LineID ไว้ให้โดยอัตโนมัติเมื่อมีการผูกในอนาคต</p>
+                  <div className="flex-shrink-0">
+                    {e.survey ? <span className="bg-blue-50 text-[#007EB3] text-[9px] font-black px-2 py-0.5 rounded uppercase">{e.survey.shirtSize}/{e.survey.shoeSize}</span> : <span className="text-[9px] font-black text-slate-200">Wait</span>}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
       </main>
 
-      <footer className="p-8 text-center bg-slate-50/80 backdrop-blur-sm">
-        <p className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">Operational Excellence • 2024</p>
+      <footer className="mt-auto py-4 text-center opacity-40">
+        <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-400">Maersk Operational Excellence</p>
       </footer>
     </div>
   );
