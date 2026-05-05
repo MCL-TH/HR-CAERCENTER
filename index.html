@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR C❤️RE CENTER</title>
-    <!-- Tailwind CSS -->
+    <title>HR C❤️RE CENTER - Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- LINE LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
@@ -20,208 +15,138 @@
             --maersk-blue: #42B0D5; 
             --maersk-dark-blue: #007EB3;
             --maersk-dark: #1E1E1E; 
-            --maersk-light-blue: #E6F2F7; 
             --brand-red: #FF4D4D;
         }
-        body { font-family: 'Kanit', 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
-        .bg-maersk { background-color: var(--maersk-blue); }
-        .text-maersk { color: var(--maersk-blue); }
-        .text-brand-red { color: var(--brand-red); }
-        .app-container { max-width: 450px; margin: 0 auto; min-height: 100vh; background: white; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05); }
-        
-        /* Brand Styled Profile Card */
-        .profile-card { 
-            background: linear-gradient(135deg, #42B0D5 0%, #007EB3 100%); 
-            border-radius: 28px; 
-            position: relative; 
-            overflow: hidden; 
-        }
-
-        .step-transition { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .custom-radio:checked + div { 
-            border-color: var(--maersk-blue); 
-            background-color: var(--maersk-light-blue); 
-            color: var(--maersk-dark-blue); 
-            box-shadow: 0 4px 12px rgba(66, 176, 213, 0.15); 
-        }
-        
-        .glass-effect { background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.18); }
-        
-        .loading-overlay { 
-            position: fixed; 
-            inset: 0; 
-            background: white; 
-            z-index: 1000; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            transition: opacity 0.3s ease; 
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: var(--maersk-blue); border-radius: 10px; }
-
-        .brand-title { font-family: 'Inter', 'Kanit', sans-serif; font-weight: 900; letter-spacing: -0.05em; }
+        body { font-family: 'Kanit', sans-serif; background-color: #f0f4f8; }
+        .brand-title { font-family: 'Inter', sans-serif; font-weight: 900; }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: white; box-shadow: 0 0 50px rgba(0,0,0,0.1); }
+        .step-transition { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .admin-card { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; border-radius: 24px; }
+        .input-field { width: 100%; padding: 12px 20px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 16px; outline: none; transition: all 0.2s; font-weight: 500; }
+        .input-field:focus { border-color: var(--maersk-blue); background: white; }
     </style>
 </head>
 <body>
 
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-overlay">
-        <div class="mb-4">
-            <h1 class="brand-title text-3xl text-slate-800">HR C<span class="text-brand-red">❤️</span>RE CENTER</h1>
-        </div>
-        <p class="text-slate-400 font-bold tracking-[0.3em] animate-pulse uppercase text-[10px]">System Loading</p>
-    </div>
-
-    <div class="app-container flex flex-col relative overflow-hidden min-h-screen">
-        
+    <div class="app-container flex flex-col relative min-h-screen">
         <!-- Navbar -->
-        <header class="p-6 flex justify-between items-center bg-white border-b border-gray-50 sticky top-0 z-50">
+        <header class="p-6 flex justify-between items-center bg-white border-b sticky top-0 z-50">
             <div class="flex flex-col">
                 <h1 class="brand-title text-xl text-slate-800 leading-none">HR C<span class="text-brand-red">❤️</span>RE CENTER</h1>
-                <span class="text-[8px] font-bold text-maersk uppercase tracking-[0.2em] mt-1">Employee Welfare Portal</span>
+                <span class="text-[9px] font-bold text-sky-500 uppercase tracking-widest mt-1">Management Portal</span>
             </div>
-            <div id="line-profile" class="flex items-center gap-2 hidden">
-                <img id="line-avatar" src="" class="w-8 h-8 rounded-full border-2 border-sky-100 shadow-sm">
-                <div class="flex flex-col">
-                    <span id="line-name" class="text-[10px] font-bold text-slate-700 truncate max-w-[70px] leading-none"></span>
-                    <span class="text-[8px] text-sky-500 font-bold uppercase tracking-tighter">Verified</span>
-                </div>
-                <button onclick="toggleAdminView()" id="admin-trigger" class="hidden ml-1 w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
-                    <i class="fa-solid fa-shield-halved text-[10px]"></i>
-                </button>
-            </div>
+            <button onclick="toggleAdminView()" id="admin-btn" class="hidden w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-sky-100 hover:text-sky-600 transition-colors">
+                <i class="fa-solid fa-user-gear"></i>
+            </button>
         </header>
 
-        <main class="flex-grow flex flex-col p-6">
+        <main class="flex-grow p-6">
             
             <!-- VIEW: LOGIN -->
-            <section id="view-login" class="step-transition flex flex-col items-center justify-center py-12 hidden">
-                <div class="text-center mb-10">
-                    <h2 class="text-3xl font-black text-slate-800 tracking-tight mb-2">ยินยันตัวตน</h2>
-                    <p class="text-slate-400 font-light text-sm">กรุณาระบุรหัสพนักงาน 7 หลักของคุณ</p>
+            <section id="view-login" class="step-transition py-10 flex flex-col items-center">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-slate-800">ลงชื่อเข้าใช้งาน</h2>
+                    <p class="text-slate-400 text-sm">ระบุรหัสพนักงานเพื่อเริ่มต้น</p>
                 </div>
-                <div class="w-full space-y-4">
-                    <div class="relative">
-                        <input type="text" id="emp-id-input" maxlength="7" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="0000000" 
-                            class="w-full px-6 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] focus:border-maersk focus:bg-white outline-none transition-all text-3xl font-black text-center text-slate-700 tracking-widest placeholder:text-slate-100">
-                    </div>
-                    <button onclick="handleLogin()" id="login-btn" class="w-full bg-[#007EB3] text-white font-bold py-5 rounded-[2rem] shadow-xl shadow-sky-100 active:scale-95 transition-all flex items-center justify-center gap-3">
-                        <span class="text-lg">เข้าสู่ระบบ</span>
-                        <i class="fa-solid fa-chevron-right text-xs opacity-50"></i>
-                    </button>
-                    <p class="text-[10px] text-center text-slate-300 mt-8 uppercase tracking-[0.3em] font-medium italic">Identity Provider System</p>
-                </div>
+                <input type="text" id="emp-id-input" maxlength="7" placeholder="Employee ID" class="input-field text-center text-2xl tracking-widest mb-4">
+                <button onclick="handleLogin()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform">
+                    เข้าสู่ระบบ
+                </button>
+                <p class="mt-6 text-[10px] text-slate-300 uppercase tracking-widest font-bold">Admin ID: 1000000</p>
             </section>
 
-            <!-- VIEW: DASHBOARD -->
-            <section id="view-dashboard" class="hidden step-transition space-y-6">
-                <div class="profile-card p-8 text-white shadow-2xl shadow-sky-100">
-                    <div class="flex justify-between items-start mb-10">
-                        <h2 class="brand-title text-sm tracking-tighter">HR C<span class="text-white">❤️</span>RE</h2>
-                        <div class="text-right">
-                            <p id="display-id" class="text-xs font-black opacity-80 tracking-widest"></p>
-                            <p class="text-[9px] opacity-60 uppercase font-bold mt-0.5 tracking-tighter">Verified Identity</p>
-                        </div>
-                    </div>
-                    <div class="space-y-1 mb-10">
-                        <h3 id="display-name" class="text-2xl font-bold tracking-tight"></h3>
-                        <div class="flex items-center gap-2 text-white/80 text-sm">
-                            <span id="display-pos" class="font-medium"></span>
-                            <span class="opacity-30">|</span>
-                            <span id="display-dept" class="opacity-90"></span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="glass-effect rounded-2xl p-3 text-center">
-                            <p class="text-[8px] uppercase opacity-70 font-black mb-1 tracking-tighter">อายุงาน</p>
-                            <p id="stat-tenure" class="text-[11px] font-bold tracking-tighter">-</p>
-                        </div>
-                        <div class="glass-effect rounded-2xl p-3 text-center">
-                            <p class="text-[8px] uppercase opacity-70 font-black mb-1 tracking-tighter">ไซส์เสื้อ</p>
-                            <p id="stat-shirt" class="text-[11px] font-bold tracking-tighter">-</p>
-                        </div>
-                        <div class="glass-effect rounded-2xl p-3 text-center">
-                            <p class="text-[8px] uppercase opacity-70 font-black mb-1 tracking-tighter">รองเท้า</p>
-                            <p id="stat-shoe" class="text-[11px] font-bold tracking-tighter">-</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <button onclick="showRegistrationView(true)" class="w-full bg-white border-2 border-slate-100 text-slate-800 font-bold py-5 rounded-[2rem] flex items-center justify-center gap-3 hover:border-maersk hover:text-maersk active:scale-95 transition-all shadow-sm">
-                        <i class="fa-solid fa-pen-to-square text-sm opacity-40"></i>
-                        อัปเดตข้อมูลขนาดตัว
-                    </button>
-                    <button onclick="location.reload()" class="w-full text-slate-300 text-[10px] font-bold py-4 hover:text-red-400 transition-colors uppercase tracking-widest">Logout / Switch Account</button>
-                </div>
-            </section>
-
-            <!-- VIEW: FORM -->
-            <section id="view-form" class="hidden step-transition space-y-6 pb-10">
-                <header class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center flex-shrink-0 text-maersk">
-                        <i class="fa-solid fa-list-check text-xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800 tracking-tight leading-none">ลงทะเบียนยูนิฟอร์ม</h2>
-                        <p class="text-slate-400 text-xs mt-1">เลือกขนาดที่เหมาะสมกับการใช้งาน</p>
-                    </div>
-                </header>
-
-                <div class="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
-                    <div class="flex items-center gap-3">
-                        <label class="text-md font-bold text-slate-700">เสื้อพนักงาน (นิ้ว)</label>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2" id="shirt-grid"></div>
-                    <div id="custom-shirt-container" class="hidden pt-1">
-                        <input type="text" id="custom-shirt-input" placeholder="ระบุรอบอก เช่น 52 นิ้ว..." 
-                            class="w-full px-5 py-4 bg-white border-2 border-maersk/20 rounded-2xl outline-none focus:border-maersk transition-all font-bold text-slate-700">
-                    </div>
-                </div>
-
-                <div class="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
-                    <div class="flex items-center gap-3">
-                        <label class="text-md font-bold text-slate-700">รองเท้าเซฟตี้ (EU)</label>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2" id="shoe-grid"></div>
-                </div>
-
-                <div class="pt-6">
-                    <button onclick="submitData()" id="submit-btn" class="w-full bg-[#007EB3] text-white font-bold py-5 rounded-[2rem] shadow-xl shadow-sky-100 text-lg active:scale-95 transition-all">
-                        บันทึกข้อมูล
-                    </button>
-                    <button onclick="showDashboardOrLogin()" class="w-full text-slate-300 text-[10px] font-bold uppercase tracking-[0.3em] mt-8">Cancel and Return</button>
-                </div>
-            </section>
-
-            <!-- VIEW: ADMIN PANEL -->
+            <!-- VIEW: ADMIN DASHBOARD -->
             <section id="view-admin" class="hidden step-transition space-y-6">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-8 bg-maersk rounded-full"></div>
-                        <h2 class="text-xl font-bold text-slate-800 uppercase tracking-tighter">Admin Console</h2>
+                <div class="admin-card p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-bold uppercase opacity-60">Superuser Dashboard</span>
+                        <i class="fa-solid fa-shield-check text-sky-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-1" id="admin-name">Administrator</h3>
+                    <p class="text-sm opacity-70">คุณสามารถจัดการข้อมูลพนักงานและดูผลตอบรับได้ที่นี่</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-2 p-1 bg-slate-100 rounded-2xl">
+                    <button onclick="switchTab('add')" id="tab-add" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all bg-white shadow-sm text-slate-800">เพิ่มพนักงาน</button>
+                    <button onclick="switchTab('list')" id="tab-list" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all text-slate-500">รายชื่อ/ผลสรุป</button>
+                </div>
+
+                <!-- Tab: Add Employee -->
+                <div id="content-add" class="space-y-4">
+                    <div class="bg-white p-5 border rounded-3xl space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Employee ID (7 Digits)</label>
+                            <input type="text" id="add-id" maxlength="7" class="input-field" placeholder="เช่น 1008221">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Full Name</label>
+                            <input type="text" id="add-name" class="input-field" placeholder="ชื่อ - นามสกุล">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Department</label>
+                                <input type="text" id="add-dept" class="input-field" placeholder="แผนก">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Position</label>
+                                <input type="text" id="add-pos" class="input-field" placeholder="ตำแหน่ง">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Status</label>
+                            <select id="add-status" class="input-field">
+                                <option value="Active">Active</option>
+                                <option value="Probation">Probation</option>
+                                <option value="Contract">Contract</option>
+                            </select>
+                        </div>
+                        <button onclick="addEmployee()" class="w-full bg-sky-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg shadow-sky-100 active:scale-95 transition-all">
+                            บันทึกข้อมูลพนักงาน
+                        </button>
                     </div>
                 </div>
-                <div id="admin-stats" class="grid grid-cols-2 gap-3"></div>
-                <div class="bg-slate-50 rounded-[2rem] p-4 max-h-[450px] overflow-y-auto space-y-3 border border-slate-100" id="admin-list"></div>
-                <button onclick="showDashboardOrLogin()" class="w-full py-4 text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Back to Home</button>
+
+                <!-- Tab: List -->
+                <div id="content-list" class="hidden space-y-4">
+                    <div id="admin-stats" class="grid grid-cols-2 gap-3"></div>
+                    <div id="employee-list" class="space-y-2">
+                        <!-- Employee items will be injected here -->
+                    </div>
+                </div>
+
+                <button onclick="location.reload()" class="w-full py-4 text-[10px] font-bold text-slate-300 uppercase tracking-widest text-center">Logout Admin</button>
+            </section>
+
+            <!-- VIEW: USER DASHBOARD (For non-admin) -->
+            <section id="view-dashboard" class="hidden step-transition">
+                <div class="bg-sky-500 text-white p-8 rounded-[2rem] mb-6">
+                    <h2 id="user-display-name" class="text-2xl font-bold">สวัสดีครับ</h2>
+                    <p id="user-display-id" class="opacity-80 text-sm"></p>
+                </div>
+                <div class="bg-white border rounded-3xl p-6 shadow-sm mb-4">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase mb-4">สถานะข้อมูล</h4>
+                    <div class="flex justify-between items-center border-b pb-3 mb-3">
+                        <span class="text-sm font-medium">ขนาดเสื้อ</span>
+                        <span id="user-shirt" class="font-bold text-sky-600">ยังไม่ระบุ</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium">ขนาดรองเท้า</span>
+                        <span id="user-shoe" class="font-bold text-sky-600">ยังไม่ระบุ</span>
+                    </div>
+                </div>
+                <button onclick="location.reload()" class="w-full py-4 text-xs font-bold text-slate-400 text-center uppercase tracking-widest">Logout</button>
             </section>
 
         </main>
-        
-        <footer class="p-8 text-center bg-white mt-auto border-t border-gray-50">
-            <p class="text-slate-300 text-[8px] font-black tracking-[0.4em] uppercase opacity-80">HR C❤️RE CENTER • Welfare Support</p>
+
+        <footer class="p-8 text-center text-[10px] font-bold text-slate-300 uppercase tracking-[0.4em]">
+            HR C❤️RE CENTER v2.0
         </footer>
     </div>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase App (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -236,269 +161,187 @@
             appId: "1:935576170295:web:a30e4a6d50eb0b4ff4f4b2"
         };
         
-        const liffId = "2009930285-1b2B5ytM";
-        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'maersk-prod-v2';
-        const ADMIN_IDS = ['1000000', '1008221']; 
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
+        const APP_ID = 'maersk-prod-v2';
+        const ADMIN_IDS = ['1000000', '1008221']; // รายชื่อ Superuser
 
         let currentUser = null;
-        let lineUser = null;
-        const SHIRT_SIZES = [
-            { label: 'SS', chest: 34 }, { label: 'S', chest: 36 }, { label: 'M', chest: 38 },
-            { label: 'L', chest: 40 }, { label: 'XL', chest: 42 }, { label: '2XL', chest: 44 },
-            { label: '3XL', chest: 46 }, { label: '4XL', chest: 48 }, { label: '5XL', chest: 50 }
-        ];
-
-        window.onload = async () => {
-            try {
-                await liff.init({ liffId });
-                if (liff.isLoggedIn()) {
-                    lineUser = await liff.getProfile();
-                    document.getElementById('line-profile').classList.remove('hidden');
-                    document.getElementById('line-avatar').src = lineUser.pictureUrl;
-                    document.getElementById('line-name').innerText = lineUser.displayName;
-                }
-
-                await auth.signInAnonymously();
-                renderGrids();
-
-                if (lineUser) {
-                    await checkAutoLogin();
-                } else {
-                    showView('view-login');
-                }
-
-                document.getElementById('loading-screen').style.opacity = '0';
-                setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 300);
-            } catch (err) {
-                console.error("Init Error:", err);
-                showView('view-login');
-                document.getElementById('loading-screen').style.display = 'none';
-            }
-        };
-
-        async function checkAutoLogin() {
-            const bindingPath = `artifacts/${APP_ID}/public/data/bindings`;
-            const bindDoc = await db.collection(bindingPath).doc(lineUser.userId).get();
-            
-            if (bindDoc.exists) {
-                const empId = bindDoc.data().empId;
-                const empPath = `artifacts/${APP_ID}/public/data/employees`;
-                const empDoc = await db.collection(empPath).doc(empId).get();
-                
-                if (empDoc.exists) {
-                    currentUser = { id: empId, ...empDoc.data() };
-                    if (ADMIN_IDS.includes(empId) || currentUser.role === 'SuperUser') {
-                        document.getElementById('admin-trigger').classList.remove('hidden');
-                    }
-                    showDashboard();
-                    return;
-                }
-            }
-            showView('view-login');
-        }
-
-        function renderGrids() {
-            const sGrid = document.getElementById('shirt-grid');
-            sGrid.innerHTML = '';
-            SHIRT_SIZES.forEach(s => {
-                sGrid.innerHTML += `
-                    <label class="cursor-pointer">
-                        <input type="radio" name="shirt-size" value="${s.label}" onclick="toggleCustomShirt(false)" class="hidden custom-radio">
-                        <div class="py-3 px-1 text-center border-2 border-slate-100 rounded-2xl font-bold text-slate-400 transition-all bg-white">
-                            <p class="text-sm leading-none">${s.label}</p>
-                            <span class="text-[8px] font-normal opacity-50 uppercase tracking-tighter">${s.chest}"</span>
-                        </div>
-                    </label>`;
-            });
-            sGrid.innerHTML += `
-                <label class="cursor-pointer col-span-3">
-                    <input type="radio" name="shirt-size" value="CUSTOM" onclick="toggleCustomShirt(true)" class="hidden custom-radio">
-                    <div class="py-3 text-center border-2 border-slate-100 rounded-2xl font-bold text-slate-400 transition-all text-xs italic bg-white tracking-tight">สั่งตัดพิเศษ</div>
-                </label>`;
-
-            const shoeGrid = document.getElementById('shoe-grid');
-            shoeGrid.innerHTML = '';
-            for (let i = 36; i <= 48; i++) {
-                shoeGrid.innerHTML += `
-                    <label class="cursor-pointer">
-                        <input type="radio" name="shoe-size" value="${i}" class="hidden custom-radio">
-                        <div class="py-3 text-center border-2 border-slate-100 rounded-xl font-bold text-slate-400 text-sm transition-all bg-white">${i}</div>
-                    </label>`;
-            }
-        }
 
         async function handleLogin() {
-            const idInput = document.getElementById('emp-id-input');
-            const id = idInput.value.trim();
-
-            if (id.length !== 7) {
-                Swal.fire({ icon: 'warning', title: 'รหัสไม่ถูกต้อง', text: 'กรุณากรอกรหัสพนักงาน 7 หลัก', confirmButtonColor: '#42B0D5' });
+            const id = document.getElementById('emp-id-input').value.trim();
+            if (id.length < 5) {
+                Swal.fire('Error', 'กรุณาระบุรหัสพนักงานให้ถูกต้อง', 'error');
                 return;
             }
 
-            Swal.fire({ title: 'ยืนยันตัวตน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                const lockPath = `artifacts/${APP_ID}/public/data/locks`;
-                const lockDoc = await db.collection(lockPath).doc(id).get();
+                await auth.signInAnonymously();
                 
-                if (lockDoc.exists && lineUser && lockDoc.data().lineId !== lineUser.userId) {
-                    Swal.fire('Identity Locked', 'รหัสนี้ถูกผูกไว้กับบัญชีอื่นแล้ว', 'error');
+                // ตรวจสอบว่าเป็น Superuser หรือไม่ก่อนเช็คฐานข้อมูล
+                if (ADMIN_IDS.includes(id)) {
+                    const empDoc = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('employees').doc(id).get();
+                    
+                    if (empDoc.exists) {
+                        currentUser = { id: id, ...empDoc.data() };
+                    } else {
+                        // ถ้าเป็น Superuser แต่ยังไม่มีข้อมูลใน DB ให้สร้าง Object ชั่วคราวเพื่อให้เข้าหน้า Admin ได้
+                        currentUser = { id: id, name: 'System Administrator' };
+                    }
+                    
+                    showAdminDashboard();
+                    Swal.close();
                     return;
                 }
 
-                const empPath = `artifacts/${APP_ID}/public/data/employees`;
-                const empDoc = await db.collection(empPath).doc(id).get();
+                // กรณีพนักงานทั่วไป ต้องมีข้อมูลในฐานข้อมูลเท่านั้น
+                const empDoc = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('employees').doc(id).get();
 
                 if (empDoc.exists) {
-                    currentUser = { id, ...empDoc.data() };
-                    
-                    if (lineUser) {
-                        await db.collection(`artifacts/${APP_ID}/public/data/bindings`).doc(lineUser.userId).set({ empId: id });
-                        await db.collection(lockPath).doc(id).set({ lineId: lineUser.userId });
-                    }
-
-                    if (ADMIN_IDS.includes(id) || currentUser.role === 'SuperUser') {
-                        document.getElementById('admin-trigger').classList.remove('hidden');
-                    }
-
-                    if (currentUser.shirtSize) showDashboard(); else showRegistrationView();
+                    currentUser = { id: id, ...empDoc.data() };
+                    showUserDashboard();
                     Swal.close();
                 } else {
-                    Swal.fire('ไม่พบข้อมูล', 'ไม่พบรหัสพนักงานในระบบ', 'error');
+                    Swal.fire('ไม่พบข้อมูล', 'ไม่พบรายชื่อพนักงานนี้ในระบบ กรุณาติดต่อ HR', 'error');
                 }
             } catch (err) {
                 Swal.fire('Error', err.message, 'error');
             }
         }
 
-        async function submitData() {
-            let shirt = document.querySelector('input[name="shirt-size"]:checked')?.value;
-            const shoe = document.querySelector('input[name="shoe-size"]:checked')?.value;
+        function showAdminDashboard() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-admin').classList.remove('hidden');
+            document.getElementById('admin-btn').classList.remove('hidden');
+            document.getElementById('admin-name').innerText = currentUser.name || 'Administrator';
+            loadEmployeeList();
+        }
 
-            if (!shirt || !shoe) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกขนาดเสื้อและรองเท้า', 'warning');
+        function showUserDashboard() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('user-display-name').innerText = `สวัสดีครับ, ${currentUser.name}`;
+            document.getElementById('user-display-id').innerText = `Employee ID: ${currentUser.id}`;
+            document.getElementById('user-shirt').innerText = currentUser.shirtSize || 'ยังไม่ระบุ';
+            document.getElementById('user-shoe').innerText = currentUser.shoeSize ? currentUser.shoeSize + ' EU' : 'ยังไม่ระบุ';
+        }
+
+        async function addEmployee() {
+            const id = document.getElementById('add-id').value.trim();
+            const name = document.getElementById('add-name').value.trim();
+            const dept = document.getElementById('add-dept').value.trim();
+            const pos = document.getElementById('add-pos').value.trim();
+            const status = document.getElementById('add-status').value;
+
+            if (!id || !name || !dept || !pos) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกข้อมูลให้ครบทุกช่อง', 'warning');
                 return;
             }
 
-            if (shirt === 'CUSTOM') {
-                const custom = document.getElementById('custom-shirt-input').value.trim();
-                if (!custom) {
-                    Swal.fire('ระบุไซส์', 'กรุณากรอกขนาดรอบอก', 'error');
-                    return;
-                }
-                shirt = `สั่งตัด (${custom}")`;
-            }
-
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
-
             try {
-                const updateData = {
-                    shirtSize: shirt,
-                    shoeSize: shoe,
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                    lineProfile: lineUser || null
-                };
+                Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
                 
-                await db.collection(`artifacts/${APP_ID}/public/data/employees`).doc(currentUser.id).update(updateData);
-                currentUser = { ...currentUser, ...updateData };
+                await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('employees').doc(id).set({
+                    name,
+                    dept,
+                    position: pos,
+                    status,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                Swal.fire('สำเร็จ', `เพิ่มพนักงานรหัส ${id} เรียบร้อยแล้ว`, 'success');
                 
-                Swal.fire({ title: 'สำเร็จ', icon: 'success', timer: 1500, showConfirmButton: false });
-                showDashboard();
+                // ล้างข้อมูลในฟอร์ม
+                document.getElementById('add-id').value = '';
+                document.getElementById('add-name').value = '';
+                document.getElementById('add-dept').value = '';
+                document.getElementById('add-pos').value = '';
+                loadEmployeeList(); // รีเฟรชรายการ
             } catch (err) {
                 Swal.fire('Error', err.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'บันทึกข้อมูล';
             }
         }
 
-        function showDashboard() {
-            showView('view-dashboard');
-            document.getElementById('display-id').innerText = `ID: ${currentUser.id}`;
-            document.getElementById('display-name').innerText = currentUser.name;
-            document.getElementById('display-pos').innerText = currentUser.position;
-            document.getElementById('display-dept').innerText = currentUser.dept;
-            document.getElementById('stat-tenure').innerText = currentUser.tenure || '-';
-            document.getElementById('stat-shirt').innerText = currentUser.shirtSize || 'รอระบุ';
-            document.getElementById('stat-shoe').innerText = currentUser.shoeSize ? currentUser.shoeSize + " EU" : 'รอระบุ';
-        }
-
-        function showRegistrationView() {
-            showView('view-form');
-            if (currentUser.shirtSize && !currentUser.shirtSize.includes('สั่งตัด')) {
-                const radio = document.querySelector(`input[name="shirt-size"][value='${currentUser.shirtSize}']`);
-                if (radio) radio.checked = true;
-            }
-            if (currentUser.shoeSize) {
-                const radio = document.querySelector(`input[name="shoe-size"][value='${currentUser.shoeSize}']`);
-                if (radio) radio.checked = true;
-            }
-        }
-
-        async function toggleAdminView() {
-            showView('view-admin');
-            const adminList = document.getElementById('admin-list');
-            adminList.innerHTML = '<p class="text-center text-xs text-slate-300 py-10 italic tracking-widest uppercase">Fetching Data...</p>';
+        async function loadEmployeeList() {
+            const listContainer = document.getElementById('employee-list');
+            listContainer.innerHTML = '<p class="text-center text-slate-300 py-4 italic">Loading...</p>';
             
             try {
-                const snapshot = await db.collection(`artifacts/${APP_ID}/public/data/employees`).get();
+                const snap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('employees').get();
                 let html = '';
-                let count = 0;
+                let responded = 0;
 
-                snapshot.forEach(doc => {
+                snap.forEach(doc => {
                     const d = doc.data();
-                    if (d.shirtSize) {
-                        count++;
-                        html += `
-                            <div class="bg-white p-4 rounded-2xl flex justify-between items-center border border-slate-50 shadow-sm">
-                                <div class="overflow-hidden">
-                                    <p class="text-[11px] font-bold text-slate-800 truncate">${d.name}</p>
-                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">${doc.id}</p>
-                                </div>
-                                <div class="flex gap-1.5">
-                                    <span class="text-[9px] bg-sky-50 text-maersk px-2 py-1 rounded-lg font-black">${d.shirtSize}</span>
-                                    <span class="text-[9px] bg-slate-100 text-slate-500 px-2 py-1 rounded-lg font-black">${d.shoeSize}</span>
-                                </div>
-                            </div>`;
-                    }
+                    if (d.shirtSize) responded++;
+                    html += `
+                        <div class="bg-white p-4 border rounded-2xl flex justify-between items-center shadow-sm">
+                            <div class="overflow-hidden mr-2">
+                                <p class="text-xs font-bold text-slate-800 truncate">${d.name}</p>
+                                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${doc.id} • ${d.dept || '-'}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${d.shirtSize ? `<span class="text-[9px] bg-green-50 text-green-600 px-2 py-1 rounded-lg font-black">DONE</span>` : `<span class="text-[9px] bg-slate-50 text-slate-400 px-2 py-1 rounded-lg font-black">PENDING</span>`}
+                                <button onclick="deleteEmployee('${doc.id}')" class="text-slate-200 hover:text-red-400 p-2"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+                            </div>
+                        </div>
+                    `;
                 });
 
                 document.getElementById('admin-stats').innerHTML = `
-                    <div class="bg-sky-50 p-5 rounded-[2rem] text-center">
-                        <p class="text-[8px] font-black text-maersk uppercase mb-1">Responded</p>
-                        <p class="text-2xl font-black text-maersk tracking-tighter">${count}</p>
+                    <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase">Responded</p>
+                        <p class="text-xl font-black text-slate-800">${responded}</p>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-[2rem] text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Total</p>
-                        <p class="text-2xl font-black text-slate-800 tracking-tighter">${snapshot.size}</p>
+                    <div class="bg-slate-50 p-4 rounded-2xl text-center">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase">Total Employees</p>
+                        <p class="text-xl font-black text-slate-800">${snap.size}</p>
                     </div>
                 `;
-                adminList.innerHTML = html || '<p class="text-center py-12 text-slate-300 text-xs italic">No data found.</p>';
+                listContainer.innerHTML = html || '<p class="text-center text-slate-300 py-10">No employees found.</p>';
             } catch (err) {
-                adminList.innerHTML = '<p class="text-center text-red-400 text-xs">Error loading data.</p>';
+                listContainer.innerHTML = `<p class="text-red-400 text-center text-xs">${err.message}</p>`;
             }
         }
 
-        function showView(viewId) {
-            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            document.getElementById(viewId).classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        async function deleteEmployee(id) {
+            const result = await Swal.fire({
+                title: 'ยืนยันการลบ?',
+                text: `คุณกำลังจะลบพนักงานรหัส ${id}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'ลบข้อมูล'
+            });
+
+            if (result.isConfirmed) {
+                await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('employees').doc(id).delete();
+                loadEmployeeList();
+            }
         }
 
-        function toggleCustomShirt(show) {
-            const container = document.getElementById('custom-shirt-container');
-            show ? container.classList.remove('hidden') : container.classList.add('hidden');
+        function switchTab(tab) {
+            document.getElementById('content-add').classList.toggle('hidden', tab !== 'add');
+            document.getElementById('content-list').classList.toggle('hidden', tab !== 'list');
+            
+            document.getElementById('tab-add').classList.toggle('bg-white', tab === 'add');
+            document.getElementById('tab-add').classList.toggle('shadow-sm', tab === 'add');
+            document.getElementById('tab-add').classList.toggle('text-slate-800', tab === 'add');
+            document.getElementById('tab-add').classList.toggle('text-slate-500', tab !== 'add');
+
+            document.getElementById('tab-list').classList.toggle('bg-white', tab === 'list');
+            document.getElementById('tab-list').classList.toggle('shadow-sm', tab === 'list');
+            document.getElementById('tab-list').classList.toggle('text-slate-800', tab === 'list');
+            document.getElementById('tab-list').classList.toggle('text-slate-500', tab !== 'list');
+            
+            if (tab === 'list') loadEmployeeList();
         }
 
-        function showDashboardOrLogin() {
-            if (currentUser?.shirtSize) showDashboard(); else showView('view-login');
+        function toggleAdminView() {
+            if (ADMIN_IDS.includes(currentUser.id)) showAdminDashboard();
         }
     </script>
 </body>
