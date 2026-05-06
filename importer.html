@@ -10,6 +10,7 @@
     <style>
         body { font-family: 'Kanit', sans-serif; }
         .tab-active { border-bottom: 3px solid #007EB3; color: #007EB3; }
+        code { background: #f1f5f9; padding: 2px 4px; border-radius: 4px; color: #e11d48; font-size: 0.9em; }
     </style>
 </head>
 <body class="bg-slate-50 p-6">
@@ -28,6 +29,7 @@
         <!-- Tabs -->
         <div class="flex gap-8 mb-6 border-b border-gray-100">
             <button onclick="switchTab('import')" id="tab-import" class="pb-3 font-bold transition-all tab-active">นำเข้า/อัปเดตข้อมูล</button>
+            <button onclick="switchTab('excel')" id="tab-excel" class="pb-3 font-bold text-gray-400 hover:text-gray-600 transition-all">Excel Helper</button>
             <button onclick="switchTab('delete')" id="tab-delete" class="pb-3 font-bold text-gray-400 hover:text-gray-600 transition-all">ลบข้อมูลพนักงาน</button>
         </div>
 
@@ -83,6 +85,33 @@
             </button>
         </div>
 
+        <!-- View: Excel Helper (NEW) -->
+        <div id="view-excel" class="hidden space-y-6 animate-in fade-in">
+            <div class="bg-amber-50 border border-amber-100 p-6 rounded-3xl">
+                <h3 class="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    วิธีแปลง Excel เป็น JSON (โดยใช้ Notepad)
+                </h3>
+                <ol class="text-sm text-amber-900 space-y-4 list-decimal ml-4">
+                    <li>
+                        เรียงลำดับคอลัมน์ใน Excel ดังนี้:<br>
+                        <span class="text-[10px] font-mono bg-white px-2 py-1 rounded border mt-1 inline-block">
+                            A:ID | B:Name | C:Position | D:Dept | E:Cluster | F:Level | G:EmpDate | H:Role
+                        </span>
+                    </li>
+                    <li>
+                        วางสูตรนี้ในคอลัมน์ <b>I2</b> (หรือคอลัมน์ว่างด้านหลังข้อมูล):
+                        <textarea readonly class="w-full mt-2 p-3 bg-white border border-amber-200 rounded-xl font-mono text-[10px] h-24">="    {""id"": """&A2&""", ""name"": """&B2&""", ""position"": """&C2&""", ""dept"": """&D2&""", ""cluster"": """&E2&""", ""level"": """&F2&""", ""empDate"": """&G2&""", ""role"": """&H2&"""},"</textarea>
+                    </li>
+                    <li>ลากสูตรลงมาให้ครบทุกแถวพนักงาน</li>
+                    <li>ก๊อปปี้คอลัมน์สูตรที่ได้ ไปวางใน <b>Notepad</b></li>
+                    <li>ใส่เครื่องหมาย <code>[</code> ไว้บรรทัดบนสุด และ <code>]</code> ไว้บรรทัดล่างสุด</li>
+                    <li><b>สำคัญ:</b> ลบเครื่องหมาย <code>,</code> (จุลภาค) ตัวสุดท้ายก่อนปิด <code>]</code> ออกด้วย</li>
+                    <li>ก๊อปปี้ข้อความทั้งหมดจาก Notepad มาวางในช่อง "นำเข้าข้อมูล"</li>
+                </ol>
+            </div>
+        </div>
+
         <!-- View: Delete -->
         <div id="view-delete" class="hidden space-y-6">
             <div class="bg-red-50 p-5 rounded-2xl border border-red-100 mb-4">
@@ -134,8 +163,11 @@
 
         function switchTab(tab) {
             document.getElementById('view-import').classList.toggle('hidden', tab !== 'import');
+            document.getElementById('view-excel').classList.toggle('hidden', tab !== 'excel');
             document.getElementById('view-delete').classList.toggle('hidden', tab !== 'delete');
+            
             document.getElementById('tab-import').className = tab === 'import' ? 'pb-3 font-bold transition-all tab-active' : 'pb-3 font-bold text-gray-400 hover:text-gray-600 transition-all';
+            document.getElementById('tab-excel').className = tab === 'excel' ? 'pb-3 font-bold transition-all tab-active' : 'pb-3 font-bold text-gray-400 hover:text-gray-600 transition-all';
             document.getElementById('tab-delete').className = tab === 'delete' ? 'pb-3 font-bold transition-all tab-active' : 'pb-3 font-bold text-gray-400 hover:text-gray-600 transition-all';
         }
 
@@ -148,7 +180,7 @@
                 data = JSON.parse(input);
                 if (!Array.isArray(data)) throw new Error('Data must be an array');
             } catch (e) {
-                return Swal.fire('Error', 'รูปแบบ JSON ไม่ถูกต้อง', 'error');
+                return Swal.fire('Error', 'รูปแบบ JSON ไม่ถูกต้อง กรุณาตรวจสอบวงเล็บ [ ] หรือเครื่องหมายคอมม่า ,', 'error');
             }
 
             const res = await Swal.fire({
