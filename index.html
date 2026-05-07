@@ -39,6 +39,11 @@
             <div class="loader w-12 h-12 border-4 border-blue-100 rounded-full mb-4"></div>
             <h3 class="font-bold text-gray-700">กำลังเข้าสู่ระบบ</h3>
             <p id="loading-status" class="text-xs text-gray-400 mt-2">กรุณารอสักครู่ ระบบกำลังตรวจสอบสถานะการลงทะเบียนของคุณ...</p>
+            
+            <!-- Fallback Button if stuck -->
+            <button id="retry-btn" onclick="location.reload()" class="hidden mt-6 text-sm text-blue-500 underline font-medium">
+                ใช้เวลานานผิดปกติ? คลิกเพื่อลองใหม่อีกครั้ง
+            </button>
         </div>
 
         <main class="flex-grow p-6">
@@ -156,16 +161,32 @@
         let lineProfile = null;
         let sizeLabels = {};
 
-        // 1. Initial Load
+        // 1. Initial Load with Timeout Security
         window.onload = async () => {
             const statusMsg = document.getElementById('loading-status');
+            const retryBtn = document.getElementById('retry-btn');
+            
+            // Show retry button after 10 seconds of waiting
+            setTimeout(() => {
+                if (!document.getElementById('loading-overlay').classList.contains('hidden')) {
+                    retryBtn.classList.remove('hidden');
+                }
+            }, 10000);
+
             try {
                 statusMsg.innerText = "กำลังเชื่อมต่อ LIFF...";
                 await liff.init({ liffId: LIFF_ID });
-                if (!liff.isLoggedIn()) { liff.login(); return; }
+                
+                if (!liff.isLoggedIn()) { 
+                    liff.login(); 
+                    return; 
+                }
+                
                 lineProfile = await liff.getProfile();
+                if (!lineProfile || !lineProfile.userId) throw new Error("ไม่สามารถดึงข้อมูลโปรไฟล์ LINE ได้");
 
                 statusMsg.innerText = "กำลังเข้าสู่ระบบฐานข้อมูล...";
+                // Ensure auth happens
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await auth.signInWithCustomToken(__initial_auth_token);
                 } else {
@@ -173,33 +194,51 @@
                 }
 
                 statusMsg.innerText = "กำลังตรวจสอบประวัติการลงทะเบียน...";
-                await loadConfigs();
-                await checkRegistration();
+                // Run these in parallel for speed
+                await Promise.all([
+                    loadConfigs(),
+                    checkRegistration()
+                ]);
 
+                // Final check to hide overlay
                 document.getElementById('loading-overlay').classList.add('hidden');
             } catch (err) {
-                console.error("Init Error:", err);
-                statusMsg.innerHTML = `<span class="text-red-500 font-bold underline" onclick="location.reload()">เกิดข้อผิดพลาด คลิกเพื่อลองใหม่</span><br><small>${err.message}</small>`;
+                console.error("Critical Init Error:", err);
+                statusMsg.innerHTML = `<span class="text-red-500 font-bold">เกิดข้อผิดพลาด: ${err.message}</span><br>โปรดลองใหม่อีกครั้ง`;
+                retryBtn.classList.remove('hidden');
             }
         };
 
-        // 2. Load Label Configs
+        // 2. Load Label Configs with Error Catch
         async function loadConfigs() {
-            const doc = await db.collection(CONFIG_PATH).doc('size-labels').get();
-            if(doc.exists) sizeLabels = doc.data();
+            try {
+                const doc = await db.collection(CONFIG_PATH).doc('size-labels').get();
+                if(doc.exists) sizeLabels = doc.data();
+            } catch (e) {
+                console.warn("Config load failed, using defaults", e);
+            }
         }
 
         // 3. CHECK REGISTRATION (The Key Logic)
         async function checkRegistration() {
-            // ค้นหาพนักงานที่มี Line UID ตรงกับคนปัจจุบัน
-            const snapshot = await db.collection(COLL_PATH).where("lineUid", "==", lineProfile.userId).limit(1).get();
-            
-            if(!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                currentUser = { id: doc.id, ...doc.data() };
-                showSuccess(currentUser);
-            } else {
-                switchView('step-login');
+            try {
+                if (!lineProfile || !lineProfile.userId) return switchView('step-login');
+                
+                const snapshot = await db.collection(COLL_PATH)
+                    .where("lineUid", "==", lineProfile.userId)
+                    .limit(1)
+                    .get();
+                
+                if(!snapshot.empty) {
+                    const doc = snapshot.docs[0];
+                    currentUser = { id: doc.id, ...doc.data() };
+                    showSuccess(currentUser);
+                } else {
+                    switchView('step-login');
+                }
+            } catch (e) {
+                console.error("Check Reg Error:", e);
+                switchView('step-login'); // Fallback to login if check fails
             }
         }
 
@@ -209,25 +248,33 @@
             if(!input) return;
             const empId = input.padStart(7, '0');
 
-            Swal.fire({ title: 'กำลังตรวจสอบ...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ 
+                title: 'กำลังตรวจสอบ...', 
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading() 
+            });
             
-            const doc = await db.collection(COLL_PATH).doc(empId).get();
-            
-            if(!doc.exists) {
-                return Swal.fire('ไม่พบรหัสพนักงาน', 'โปรดตรวจสอบรหัสอีกครั้ง หรือติดต่อฝ่ายบุคคล', 'error');
+            try {
+                const doc = await db.collection(COLL_PATH).doc(empId).get();
+                
+                if(!doc.exists) {
+                    return Swal.fire('ไม่พบรหัสพนักงาน', 'โปรดตรวจสอบรหัสอีกครั้ง หรือติดต่อฝ่ายบุคคล', 'error');
+                }
+
+                const data = doc.data();
+
+                // เช็คว่ารหัสนี้มีคนอื่นเอาไปใช้หรือยัง
+                if(data.lineUid && data.lineUid !== lineProfile.userId) {
+                    return Swal.fire('รหัสนี้ถูกใช้แล้ว', 'รหัสพนักงานนี้ถูกลงทะเบียนด้วยบัญชี LINE อื่นแล้ว', 'warning');
+                }
+
+                currentUser = { id: doc.id, ...data };
+                renderSelection();
+                switchView('step-selection');
+                Swal.close();
+            } catch (err) {
+                Swal.fire('Error', 'การเชื่อมต่อฐานข้อมูลล้มเหลว: ' + err.message, 'error');
             }
-
-            const data = doc.data();
-
-            // เช็คว่ารหัสนี้มีคนอื่นเอาไปใช้หรือยัง (ถ้ามี LineUid อื่นอยู่แล้ว)
-            if(data.lineUid && data.lineUid !== lineProfile.userId) {
-                return Swal.fire('รหัสนี้ถูกใช้แล้ว', 'รหัสพนักงานนี้ถูกลงทะเบียนด้วยบัญชี LINE อื่นแล้ว', 'warning');
-            }
-
-            currentUser = { id: doc.id, ...data };
-            renderSelection();
-            switchView('step-selection');
-            Swal.close();
         }
 
         function renderSelection() {
@@ -282,15 +329,20 @@
         }
 
         function showSuccess(data) {
-            document.getElementById('res-shirt').innerText = data.shirt;
-            document.getElementById('res-shoe').innerText = data.shoe;
+            document.getElementById('res-shirt').innerText = data.shirt || '-';
+            document.getElementById('res-shoe').innerText = data.shoe || '-';
             
-            const ts = data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt || new Date());
-            document.getElementById('last-updated').innerText = `อัปเดตเมื่อ: ${ts.toLocaleString('th-TH')}`;
+            let tsLabel = "ยังไม่มีข้อมูล";
+            if (data.updatedAt) {
+                const ts = data.updatedAt.toDate ? data.updatedAt.toDate() : (data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt));
+                tsLabel = `อัปเดตเมื่อ: ${ts.toLocaleString('th-TH')}`;
+            }
+            document.getElementById('last-updated').innerText = tsLabel;
             
             if(["1802479", "admin"].includes(data.id)) document.getElementById('admin-pill').classList.remove('hidden');
             
             switchView('view-success');
+            document.getElementById('loading-overlay').classList.add('hidden');
         }
 
         function backToEdit() {
@@ -299,31 +351,43 @@
         }
 
         function switchView(id) {
-            ['step-login', 'step-selection', 'view-success', 'admin-view'].forEach(v => document.getElementById(v).classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
+            ['step-login', 'step-selection', 'view-success', 'admin-view'].forEach(v => {
+                const el = document.getElementById(v);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(id);
+            if (target) target.classList.remove('hidden');
             window.scrollTo(0,0);
         }
 
         // Admin (Summary)
         async function showAdminView() {
             switchView('admin-view');
-            const snap = await db.collection(COLL_PATH).get();
-            const total = snap.size;
-            const reg = snap.docs.filter(d => d.data().shirt).length;
-            document.getElementById('admin-stats').innerHTML = `
-                <div class="bg-gray-100 p-4 rounded-xl text-center"><p class="text-xs">ทั้งหมด</p><p class="text-2xl font-bold">${total}</p></div>
-                <div class="bg-blue-100 p-4 rounded-xl text-center"><p class="text-xs">ลงแล้ว</p><p class="text-2xl font-bold">${reg}</p></div>
-            `;
+            try {
+                const snap = await db.collection(COLL_PATH).get();
+                const total = snap.size;
+                const reg = snap.docs.filter(d => d.data().shirt).length;
+                document.getElementById('admin-stats').innerHTML = `
+                    <div class="bg-gray-100 p-4 rounded-xl text-center"><p class="text-xs">ทั้งหมด</p><p class="text-2xl font-bold">${total}</p></div>
+                    <div class="bg-blue-100 p-4 rounded-xl text-center"><p class="text-xs">ลงแล้ว</p><p class="text-2xl font-bold">${reg}</p></div>
+                `;
+            } catch (e) {
+                console.error("Admin Load Error:", e);
+            }
         }
         function closeAdmin() { switchView('view-success'); }
 
         async function exportData() {
-            const snap = await db.collection(COLL_PATH).get();
-            const rows = snap.docs.map(doc => ({ ID: doc.id, ...doc.data() }));
-            const ws = XLSX.utils.json_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Report");
-            XLSX.writeFile(wb, `Uniform_Export_${new Date().getTime()}.xlsx`);
+            try {
+                const snap = await db.collection(COLL_PATH).get();
+                const rows = snap.docs.map(doc => ({ ID: doc.id, ...doc.data() }));
+                const ws = XLSX.utils.json_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Report");
+                XLSX.writeFile(wb, `Uniform_Export_${new Date().getTime()}.xlsx`);
+            } catch (e) {
+                Swal.fire('Export Error', e.message, 'error');
+            }
         }
     </script>
 </body>
