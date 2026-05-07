@@ -10,219 +10,158 @@
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kanit', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Kanit', sans-serif; background-color: #f3f4f6; }
         .maersk-blue { color: #007EB3; }
         .bg-maersk { background-color: #007EB3; }
-        .step-animation { animation: slideUp 0.4s ease-out forwards; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .loading-screen { 
-            position: fixed; inset: 0; background: white; z-index: 9999; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-        }
-
-        .size-card { transition: all 0.2s; border: 2px solid #f1f5f9; cursor: pointer; position: relative; }
-        .size-radio:checked + .size-card { border-color: #007EB3; background-color: #eff6ff; color: #007EB3; transform: scale(1.02); }
-        .size-radio:checked + .size-card::after { content: '✓'; position: absolute; top: 4px; right: 8px; font-size: 10px; font-weight: bold; }
-        
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        
         .tab-active { border-bottom: 3px solid #007EB3; color: #007EB3; font-weight: 600; }
+        .size-card { transition: all 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
+        .size-radio:checked + .size-card { border-color: #007EB3; background-color: #eff6ff; }
     </style>
 </head>
 <body class="antialiased">
 
-    <!-- Loading -->
-    <div id="loader" class="loading-screen">
-        <div class="relative flex items-center justify-center">
-            <div class="w-16 h-16 border-4 border-blue-50 border-t-[#007EB3] rounded-full animate-spin"></div>
-            <div class="absolute text-[10px] font-bold maersk-blue">HR</div>
-        </div>
-        <p class="mt-4 text-[#007EB3] font-bold tracking-widest animate-pulse uppercase text-xs">HR C❤️RE CENTER</p>
-    </div>
-
-    <div class="max-w-[480px] mx-auto min-h-screen bg-white shadow-2xl flex flex-col relative">
-        <!-- Header -->
-        <header class="p-6 border-b flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-md z-10">
+    <div class="max-w-[480px] mx-auto min-h-screen bg-white shadow-xl flex flex-col">
+        <!-- Header: ลบโลโก้ดาวออก แสดงเฉพาะข้อความ -->
+        <header class="p-5 border-b flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-md z-20">
             <div class="flex flex-col">
-                <h1 class="font-bold text-xl maersk-blue tracking-tighter uppercase leading-none">HR C❤️RE CENTER</h1>
-                <span class="text-[9px] tracking-[0.2em] text-gray-400 font-medium">MAERSK MCL THALLAND</span>
+                <h1 class="font-bold text-xl maersk-blue tracking-tight uppercase">HR C❤️RE CENTER</h1>
             </div>
-            <div id="user-pill" onclick="checkAdminPillClick()" class="hidden flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border cursor-pointer active:scale-95 transition-transform">
-                <img id="user-avatar" class="w-5 h-5 rounded-full border border-blue-200" src="">
-                <span id="user-name" class="text-[10px] font-bold text-gray-600 truncate max-w-[70px]"></span>
+            <div id="admin-pill" onclick="showAdminView()" class="hidden bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-bold cursor-pointer border border-amber-200">
+                ADMIN PANEL
             </div>
         </header>
 
         <main class="flex-grow p-6">
             
+            <!-- ส่วนของ User -->
             <div id="user-view">
-                <!-- Step 1: Login -->
-                <section id="step-1" class="hidden step-animation py-8 text-center">
-                    <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <svg class="w-10 h-10 maersk-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="1.5"/></svg>
+                <!-- หน้ากรอกรหัสพนักงาน -->
+                <section id="step-login" class="space-y-6 py-10">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold text-gray-800">ลงทะเบียนพนักงาน</h2>
+                        <p class="text-gray-500 text-sm">กรุณากรอกรหัสพนักงาน 7 หลัก</p>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">ลงทะเบียนพนักงาน</h2>
-                    <p class="text-gray-400 text-sm mb-8">กรุณากรอกรหัสพนักงานตัวเลข 7 หลัก</p>
-                    <input type="number" id="emp-id-input" oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7);" placeholder="0000000"
-                        class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center text-3xl font-bold outline-none focus:border-[#007EB3] transition-all mb-4 tracking-[0.2em]">
-                    <button onclick="handleVerify()" class="w-full bg-maersk text-white font-bold py-5 rounded-2xl shadow-lg active:scale-95 transition-all">ตรวจสอบข้อมูล</button>
+                    <input type="number" id="input-emp-id" placeholder="0000000" class="w-full p-4 border-2 rounded-2xl text-center text-3xl font-bold outline-none focus:border-blue-500 tracking-widest">
+                    <button onclick="verifyUser()" class="w-full bg-maersk text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">ตรวจสอบข้อมูล</button>
                 </section>
 
-                <!-- Step 2: Confirmation -->
-                <section id="step-2" class="hidden step-animation py-8">
-                    <div class="text-center mb-8">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-2">ยืนยันตัวตน</h2>
-                        <p class="text-gray-400 text-sm">กรุณาตรวจสอบชื่อและตำแหน่งของคุณ</p>
-                    </div>
-                    <div class="bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 mb-6 space-y-4">
-                        <div>
-                            <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">ชื่อ-นามสกุล</p>
-                            <p id="display-emp-name" class="text-xl font-bold text-gray-800">-</p>
-                        </div>
-                        <div class="pt-4 border-t border-blue-200">
-                            <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">ตำแหน่ง / แผนก</p>
-                            <p id="display-emp-detail" class="text-sm font-medium text-gray-600">-</p>
-                        </div>
-                    </div>
-
-                    <button id="btn-superuser" onclick="showAdminView()" class="hidden w-full bg-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg mb-4 flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-width="2"/></svg>
-                        เข้าสู่หน้าแอดมิน
-                    </button>
-
-                    <div class="flex gap-3">
-                        <button onclick="showStep('step-1')" class="flex-1 bg-gray-100 text-gray-500 font-bold py-4 rounded-2xl">ไม่ใช่ฉัน</button>
-                        <button onclick="showStep('step-3')" class="flex-[2] bg-maersk text-white font-bold py-4 rounded-2xl shadow-lg">ใช่ นี่คือฉัน</button>
-                    </div>
-                </section>
-
-                <!-- Step 3: Selection -->
-                <section id="step-3" class="hidden step-animation space-y-8">
-                    <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <div class="flex items-center gap-3 overflow-hidden text-ellipsis">
-                            <div class="bg-maersk px-3 py-1 rounded-lg text-white font-bold text-xs flex-shrink-0" id="locked-id-display"></div>
-                            <div class="text-xs font-bold text-slate-500 truncate" id="locked-name-display"></div>
-                        </div>
+                <!-- หน้าเลือกไซส์ -->
+                <section id="step-selection" class="hidden space-y-6">
+                    <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                        <p class="text-[10px] text-blue-400 font-bold uppercase">ข้อมูลพนักงาน</p>
+                        <p id="user-display-name" class="font-bold text-gray-800">-</p>
+                        <p id="user-display-dept" class="text-xs text-gray-500">-</p>
                     </div>
 
                     <div class="space-y-4">
-                        <label class="block font-bold text-gray-700 flex items-center gap-2">👕 ขนาดเสื้อยูนิฟอร์ม</label>
-                        <div class="grid grid-cols-3 gap-2" id="shirt-grid"></div>
+                        <label class="font-bold text-gray-700">👕 เลือกไซส์เสื้อ</label>
+                        <div id="grid-shirt" class="grid grid-cols-3 gap-2"></div>
                     </div>
 
                     <div class="space-y-4">
-                        <label class="block font-bold text-gray-700 flex items-center gap-2">👟 ขนาดรองเท้าเซฟตี้</label>
-                        <div class="grid grid-cols-4 gap-2" id="shoe-grid"></div>
+                        <label class="font-bold text-gray-700">👟 เลือกไซส์รองเท้า</label>
+                        <div id="grid-shoe" class="grid grid-cols-3 gap-2"></div>
                     </div>
 
-                    <button onclick="submitRegistration()" class="w-full bg-maersk text-white font-bold py-5 rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all mt-6">บันทึกข้อมูลไซส์</button>
+                    <button onclick="saveSelection()" class="w-full bg-maersk text-white font-bold py-4 rounded-2xl shadow-lg mt-6">บันทึกข้อมูล</button>
                 </section>
 
-                <!-- Success View -->
-                <section id="view-success" class="hidden step-animation text-center py-8">
-                    <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 text-green-500 border-2 border-green-100">
+                <!-- หน้าสรุปผล (Success) -->
+                <section id="view-success" class="hidden text-center space-y-6 py-10">
+                    <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-width="3"/></svg>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-800 mb-1">บันทึกข้อมูลเรียบร้อย</h2>
-                    <p id="last-updated-text" class="text-[10px] text-gray-400 mb-6 uppercase tracking-wider font-bold"></p>
-                    
-                    <div class="bg-gray-50 p-6 rounded-3xl border border-dashed border-gray-200 text-left space-y-3 mb-6">
-                        <div class="flex justify-between items-center"><span class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">รหัสพนักงาน:</span> <span id="res-id" class="font-bold text-gray-700"></span></div>
-                        <div class="flex justify-between items-center"><span class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">ชื่อพนักงาน:</span> <span id="res-name" class="font-bold text-gray-700"></span></div>
-                        <div class="pt-2 border-t border-gray-200">
-                            <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">ไซส์ที่เลือก</p>
-                            <div class="flex justify-between items-center"><span class="text-gray-700 text-sm font-bold">👕 เสื้อ:</span> <span id="res-shirt" class="font-bold maersk-blue"></span></div>
-                            <div class="flex justify-between items-center"><span class="text-gray-700 text-sm font-bold">👟 รองเท้า:</span> <span id="res-shoe" class="font-bold maersk-blue"></span></div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">บันทึกข้อมูลเรียบร้อย</h2>
+                        <p id="last-updated" class="text-[11px] text-gray-400 mt-1 font-bold"></p>
+                    </div>
+
+                    <div class="bg-gray-50 p-6 rounded-3xl border text-left space-y-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">👕 ไซส์เสื้อที่เลือก</p>
+                            <p id="res-shirt" class="font-bold text-gray-800 text-lg">-</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">👟 ไซส์รองเท้าที่เลือก</p>
+                            <p id="res-shoe" class="font-bold text-gray-800 text-lg">-</p>
                         </div>
                     </div>
-                    
-                    <div class="grid grid-cols-1 gap-3 px-4">
-                        <button onclick="showStep('step-3')" class="w-full bg-white border-2 border-gray-100 text-gray-600 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition-all">
+
+                    <div class="space-y-3">
+                        <button onclick="backToEdit()" class="w-full bg-white border-2 border-gray-200 text-gray-600 font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
-                            แก้ไขข้อมูลไซส์
+                            กลับไปแก้ไขขนาดที่เลือก
                         </button>
-                        <button onclick="liff.closeWindow()" class="w-full bg-gray-100 text-gray-400 font-bold py-4 rounded-2xl shadow-sm">ปิดหน้าต่าง</button>
-                        <p id="admin-hint" class="hidden text-[10px] text-amber-500 font-bold mt-2">💡 แอดมินสามารถคลิกชื่อด้านบนเพื่อเข้า Dashboard ได้</p>
+                        <button onclick="liff.closeWindow()" class="w-full text-gray-400 text-sm font-medium">ปิดหน้าต่างนี้</button>
                     </div>
                 </section>
             </div>
 
-            <!-- Admin View -->
-            <div id="admin-view" class="hidden step-animation space-y-6">
-                <!-- Admin Tabs -->
-                <div class="flex border-b text-sm font-bold text-gray-400">
-                    <button onclick="showAdminTab('dash')" id="tab-dash" class="flex-1 py-4 tab-active">Dashboard</button>
-                    <button onclick="showAdminTab('config')" id="tab-config" class="flex-1 py-4">Config Size</button>
-                    <button onclick="showAdminTab('helper')" id="tab-helper" class="flex-1 py-4">Excel Helper</button>
-                    <button onclick="closeAdminView()" class="px-4 py-4 text-red-400">
+            <!-- ส่วนของ Admin -->
+            <div id="admin-view" class="hidden space-y-6">
+                <div class="flex border-b text-xs font-bold text-gray-400 mb-4">
+                    <button onclick="switchAdminTab('dash')" id="tab-dash" class="flex-1 py-4 tab-active">DASHBOARD</button>
+                    <button onclick="switchAdminTab('size')" id="tab-size" class="flex-1 py-4">กำหนดขนาดไซส์</button>
+                    <button onclick="switchAdminTab('excel')" id="tab-excel" class="flex-1 py-4">EXCEL HELPER</button>
+                    <button onclick="closeAdmin()" class="px-4 text-red-500">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2"/></svg>
                     </button>
                 </div>
 
                 <!-- Tab: Dashboard -->
-                <div id="admin-tab-dash" class="space-y-4 pt-4">
+                <div id="admin-dash" class="space-y-4">
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
-                            <p class="text-[10px] font-bold text-blue-400 uppercase">พนักงานในระบบ</p>
-                            <p id="stat-total" class="text-2xl font-bold text-blue-800">0</p>
+                        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                            <p class="text-[10px] font-bold text-blue-400 uppercase">พนักงานทั้งหมด</p>
+                            <p id="stat-total" class="text-2xl font-bold maersk-blue">0</p>
                         </div>
-                        <div class="bg-green-50 p-4 rounded-2xl border border-green-100 shadow-sm">
+                        <div class="bg-green-50 p-4 rounded-2xl border border-green-100">
                             <p class="text-[10px] font-bold text-green-400 uppercase">ลงทะเบียนแล้ว</p>
-                            <p id="stat-reg" class="text-2xl font-bold text-green-800">0</p>
+                            <p id="stat-reg" class="text-2xl font-bold text-green-700">0</p>
                         </div>
                     </div>
-
-                    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                        <label class="block font-bold text-gray-700 text-sm">📤 Importer (JSON)</label>
-                        <textarea id="import-json" rows="4" class="w-full p-4 bg-gray-50 border rounded-2xl text-[10px] font-mono outline-none" placeholder='[{"id":"0000001","name":"สมชาย"}]'></textarea>
-                        <button onclick="handleImport()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md">Sync Data</button>
+                    <div class="bg-white p-4 border rounded-2xl space-y-3">
+                        <h3 class="font-bold text-sm">Importer (JSON)</h3>
+                        <textarea id="import-area" rows="4" class="w-full p-3 bg-gray-50 border rounded-xl text-[10px] font-mono" placeholder='[{"id":"0000001","name":"John Doe"}]'></textarea>
+                        <button onclick="importData()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md">Sync Data</button>
                     </div>
-
-                    <button onclick="handleExport()" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4-4v12" stroke-width="2"/></svg>
-                        Export Master List (.xlsx)
+                    <button onclick="exportData()" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2">
+                        Export XLSX
                     </button>
                 </div>
 
-                <!-- Tab: Config Size -->
-                <div id="admin-tab-config" class="hidden space-y-6 pt-4">
-                    <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-4">
-                        <p class="text-xs text-amber-700">ระบุคำอธิบายไซส์เพื่อให้พนักงานตัดสินใจเลือกได้ง่ายขึ้น ข้อมูลนี้จะถูกบันทึกลงฐานข้อมูลพนักงานเมื่อมีการเลือก</p>
+                <!-- Tab: กำหนดขนาดไซส์เสื้อและรองเท้า -->
+                <div id="admin-size" class="hidden space-y-6">
+                    <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-700">
+                        กำหนดรายละเอียด เช่น "XL รอบอก 40 นิ้ว" หรือ "Size 42 ความยาว 26"
                     </div>
-                    
                     <div class="space-y-4">
-                        <h3 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2">👕 คำอธิบายไซส์เสื้อ (รอบอก)</h3>
-                        <div id="shirt-config-list" class="space-y-2 max-h-[250px] overflow-y-auto pr-2"></div>
+                        <h4 class="font-bold text-gray-700 border-l-4 border-blue-500 pl-2">ไซส์เสื้อ</h4>
+                        <div id="config-shirt-list" class="space-y-2"></div>
                     </div>
-
-                    <div class="space-y-4">
-                        <h3 class="font-bold text-gray-700 border-l-4 border-green-500 pl-2">👟 คำอธิบายไซส์รองเท้า (ความยาว)</h3>
-                        <div id="shoe-config-list" class="space-y-2 max-h-[250px] overflow-y-auto pr-2"></div>
+                    <div class="space-y-4 border-t pt-4">
+                        <h4 class="font-bold text-gray-700 border-l-4 border-green-500 pl-2">ไซส์รองเท้า</h4>
+                        <div id="config-shoe-list" class="space-y-2"></div>
                     </div>
-                    
-                    <button onclick="saveSizeConfigs()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-md mt-4">บันทึกการตั้งค่าไซส์</button>
+                    <button onclick="saveSizeConfig()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg">บันทึกการตั้งค่าไซส์</button>
                 </div>
 
                 <!-- Tab: Excel Helper -->
-                <div id="admin-tab-helper" class="hidden space-y-4 pt-4">
-                    <div class="bg-gray-50 p-5 rounded-3xl border space-y-4">
-                        <h3 class="font-bold text-gray-700">สูตร Excel สำหรับสร้าง JSON</h3>
-                        <p class="text-xs text-gray-400">สมมติว่าคอลัมน์ A=ID, B=ชื่อ, C=ตำแหน่ง, D=แผนก ให้วางสูตรนี้ในคอลัมน์ E:</p>
-                        <div class="bg-black text-green-400 p-4 rounded-xl text-[10px] font-mono break-all leading-relaxed relative group">
+                <div id="admin-excel" class="hidden space-y-4">
+                    <div class="bg-gray-50 p-5 rounded-2xl border space-y-4">
+                        <h3 class="font-bold text-gray-700">สูตร Excel (Excel Formula)</h3>
+                        <p class="text-xs text-gray-500">วางสูตรนี้ใน Excel เพื่อสร้างโครงสร้าง JSON (สมมติ A=ID, B=ชื่อ, C=ตำแหน่ง, D=แผนก):</p>
+                        <div class="bg-black text-green-400 p-4 rounded-xl text-[10px] font-mono break-all relative group">
                             ="{"&CHAR(34)&"id"&CHAR(34)&":"&CHAR(34)&A2&CHAR(34)&","&CHAR(34)&"name"&CHAR(34)&":"&CHAR(34)&B2&CHAR(34)&","&CHAR(34)&"position"&CHAR(34)&":"&CHAR(34)&C2&CHAR(34)&","&CHAR(34)&"dept"&CHAR(34)&":"&CHAR(34)&D2&CHAR(34)&"},"
-                            <button onclick="copyToClipboard(this)" class="absolute top-2 right-2 bg-gray-700 text-white px-2 py-1 rounded text-[8px] hover:bg-gray-600">COPY FORMULA</button>
+                            <button onclick="copyFormula(this)" class="absolute top-2 right-2 bg-gray-700 text-white px-2 py-1 rounded text-[8px]">COPY</button>
                         </div>
-                        <div class="space-y-2">
-                            <p class="text-xs font-bold text-gray-600">ขั้นตอนการใช้งาน:</p>
-                            <ol class="text-[11px] text-gray-500 list-decimal pl-4 space-y-1">
-                                <li>เปิดไฟล์ Excel พนักงานของคุณ</li>
-                                <li>ลากสูตรลงมาจนครบทุกแถว</li>
-                                <li>ก๊อปปี้ทุกแถวที่ได้จากคอลัมน์สูตร</li>
-                                <li>นำมาวางในช่อง Importer (ลบลูกน้ำตัวสุดท้ายออก)</li>
-                                <li>ครอบด้วย [ ] (เช่น [ {ข้อมูล},{ข้อมูล} ])</li>
-                                <li>กดปุ่ม Sync Data ในแท็บ Dashboard</li>
+                        <div class="text-[11px] text-gray-500 space-y-2 pt-2">
+                            <p class="font-bold">วิธีใช้งาน:</p>
+                            <ol class="list-decimal pl-4">
+                                <li>ลากสูตรลงมาจนครบทุกแถวใน Excel</li>
+                                <li>ก๊อปปี้ข้อมูลที่ได้ทั้งหมดมาวางในช่อง Importer (Dashboard)</li>
+                                <li>ใส่ [ ] ครอบหัวท้าย (เช่น [ {ข้อมูล1},{ข้อมูล2} ])</li>
+                                <li>กด Sync Data</li>
                             </ol>
                         </div>
                     </div>
@@ -232,14 +171,14 @@
         </main>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Compatibility mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyCWhf-BRWNMk5C6QzCUJbVVwGgUK9mnMoU",
+            apiKey: "",
             authDomain: "hr-carecenter.firebaseapp.com",
             projectId: "hr-carecenter",
             storageBucket: "hr-carecenter.firebasestorage.app",
@@ -247,7 +186,7 @@
             appId: "1:935576170295:web:a30e4a6d50eb0b4ff4f4b2"
         };
         const LIFF_ID = "2009930285-1b2B5ytM";
-        const APP_ID = "maersk-registration"; 
+        const APP_ID = "maersk-core";
         const COLL_PATH = `artifacts/${APP_ID}/public/data/employees`;
         const CONFIG_PATH = `artifacts/${APP_ID}/public/data/configs`;
         const SUPERUSER_ID = "1802479";
@@ -256,282 +195,235 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        let lineProfile = null;
         let currentUser = null;
+        let lineProfile = null;
         let sizeConfigs = {
-            shirts: { 
-                'SS': '34 นิ้ว', 'S': '36 นิ้ว', 'M': '38 นิ้ว', 'L': '40 นิ้ว', 
-                'XL': '42 นิ้ว', '2XL': '44 นิ้ว', '3XL': '46 นิ้ว', '4XL': '48 นิ้ว', '5XL': '50 นิ้ว' 
-            },
-            shoes: {}
+            shirts: ["S", "M", "L", "XL", "2XL", "3XL"],
+            shoes: ["38", "39", "40", "41", "42", "43", "44"],
+            labels: {} // e.g., "XL": "รอบอก 40 นิ้ว"
         };
-        // Default shoes 36-48
-        for(let i=36; i<=48; i++) sizeConfigs.shoes[i] = `ความยาว ${22 + (i-36)*0.5} ซม.`;
 
         window.onload = async () => {
             try {
                 await liff.init({ liffId: LIFF_ID });
                 if (!liff.isLoggedIn()) { liff.login(); return; }
                 lineProfile = await liff.getProfile();
-                
-                document.getElementById('user-pill').classList.remove('hidden');
-                document.getElementById('user-avatar').src = lineProfile.pictureUrl;
-                document.getElementById('user-name').innerText = lineProfile.displayName;
-
                 await auth.signInAnonymously();
-                
-                // Load Configs from DB
-                const configDoc = await db.collection(CONFIG_PATH).doc('size-descriptions').get();
-                if(configDoc.exists) sizeConfigs = configDoc.data();
 
+                // Load Config
+                const configDoc = await db.collection(CONFIG_PATH).doc('size-labels').get();
+                if(configDoc.exists) sizeConfigs.labels = configDoc.data();
+
+                // Check if registered
                 const snapshot = await db.collection(COLL_PATH).where("lineUid", "==", lineProfile.userId).limit(1).get();
-
-                if (!snapshot.empty) {
+                if(!snapshot.empty) {
                     const doc = snapshot.docs[0];
                     currentUser = { id: doc.id, ...doc.data() };
-                    if(currentUser.id === SUPERUSER_ID) {
-                        document.getElementById('admin-hint').classList.remove('hidden');
-                        document.getElementById('user-pill').classList.add('border-amber-400', 'bg-amber-50');
-                    }
-                    renderSuccess();
-                    showStep('view-success');
-                } else {
-                    showStep('step-1');
+                    if(currentUser.id === SUPERUSER_ID) document.getElementById('admin-pill').classList.remove('hidden');
+                    showSuccess(currentUser);
                 }
-                renderGrids();
-                renderConfigLists();
-            } catch (err) {
-                console.error(err);
-                showStep('step-1');
-            } finally {
-                setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 800);
-            }
+                
+                renderUserGrids();
+                renderAdminConfig();
+            } catch (err) { console.error(err); }
         };
 
-        function renderGrids() {
-            const shirtGrid = document.getElementById('shirt-grid');
-            const shoeGrid = document.getElementById('shoe-grid');
+        function renderUserGrids() {
+            const shirtGrid = document.getElementById('grid-shirt');
+            const shoeGrid = document.getElementById('grid-shoe');
             shirtGrid.innerHTML = ''; shoeGrid.innerHTML = '';
-            
-            Object.entries(sizeConfigs.shirts).forEach(([label, desc]) => {
-                const isChecked = currentUser?.shirtSize === label ? 'checked' : '';
+
+            sizeConfigs.shirts.forEach(size => {
+                const label = sizeConfigs.labels[size] || '';
                 shirtGrid.innerHTML += `
                     <label>
-                        <input type="radio" name="shirt" value="${label}" class="hidden size-radio" ${isChecked}>
-                        <div class="size-card p-3 rounded-2xl text-center bg-gray-50 h-full flex flex-col justify-center">
-                            <div class="font-bold text-sm">${label}</div>
-                            <div class="text-[9px] opacity-60 leading-tight">${desc}</div>
+                        <input type="radio" name="shirt" value="${size}" class="hidden size-radio" ${currentUser?.shirt === size ? 'checked' : ''}>
+                        <div class="size-card p-3 rounded-xl text-center h-full flex flex-col justify-center">
+                            <div class="font-bold text-sm">${size}</div>
+                            <div class="text-[9px] text-gray-400 leading-tight">${label}</div>
                         </div>
                     </label>`;
             });
-            
-            Object.entries(sizeConfigs.shoes).forEach(([label, desc]) => {
-                const isChecked = currentUser?.shoeSize === label ? 'checked' : '';
+
+            sizeConfigs.shoes.forEach(size => {
+                const label = sizeConfigs.labels[size] || '';
                 shoeGrid.innerHTML += `
                     <label>
-                        <input type="radio" name="shoe" value="${label}" class="hidden size-radio" ${isChecked}>
-                        <div class="size-card p-3 rounded-xl text-center bg-gray-50 h-full flex flex-col justify-center">
-                            <div class="font-bold text-sm">${label}</div>
-                            <div class="text-[8px] opacity-60 leading-tight">${desc}</div>
+                        <input type="radio" name="shoe" value="${size}" class="hidden size-radio" ${currentUser?.shoe === size ? 'checked' : ''}>
+                        <div class="size-card p-3 rounded-xl text-center h-full flex flex-col justify-center">
+                            <div class="font-bold text-sm">Size ${size}</div>
+                            <div class="text-[9px] text-gray-400 leading-tight">${label}</div>
                         </div>
                     </label>`;
             });
         }
 
-        async function handleVerify() {
-            let idInput = document.getElementById('emp-id-input').value.trim();
-            if (!idInput) return;
-            const id = idInput.padStart(7, '0');
-
+        async function verifyUser() {
+            const id = document.getElementById('input-emp-id').value.trim().padStart(7, '0');
+            if(!id) return;
             Swal.fire({ title: 'กำลังตรวจสอบ...', didOpen: () => Swal.showLoading() });
-            try {
-                const doc = await db.collection(COLL_PATH).doc(id).get();
-                if (!doc.exists) return Swal.fire('ไม่พบรหัสพนักงาน', 'กรุณาติดต่อ HR', 'error');
-
-                const data = doc.data();
-                if (data.lineUid && data.lineUid !== (lineProfile?.userId)) {
-                    return Swal.fire('ลงทะเบียนแล้ว', 'รหัสนี้ถูกผูกกับบัญชีอื่นแล้ว', 'error');
-                }
-
-                currentUser = { id: doc.id, ...data };
-                document.getElementById('display-emp-name').innerText = data.name;
-                document.getElementById('display-emp-detail').innerText = `${data.position || ''} | ${data.dept || ''}`;
-                document.getElementById('locked-id-display').innerText = `ID: ${doc.id}`;
-                document.getElementById('locked-name-display').innerText = data.name;
-                
-                if(currentUser.id === SUPERUSER_ID) {
-                    document.getElementById('btn-superuser').classList.remove('hidden');
-                    document.getElementById('user-pill').classList.add('border-amber-400', 'bg-amber-50');
-                }
-                Swal.close();
-                showStep('step-2');
-            } catch (err) { Swal.fire('Error', 'ลองใหม่อีกครั้ง', 'error'); }
-        }
-
-        async function submitRegistration() {
-            const shirt = document.querySelector('input[name="shirt"]:checked')?.value;
-            const shoe = document.querySelector('input[name="shoe"]:checked')?.value;
-            if (!shirt || !shoe) return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกไซส์ให้ครบถ้วน', 'warning');
-
-            Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
-            try {
-                const updateData = {
-                    shirtSize: shirt,
-                    shirtDesc: sizeConfigs.shirts[shirt],
-                    shoeSize: shoe,
-                    shoeDesc: sizeConfigs.shoes[shoe],
-                    registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lineUid: lineProfile.userId,
-                    lineDisplayName: lineProfile.displayName
-                };
-                await db.collection(COLL_PATH).doc(currentUser.id).update(updateData);
-                currentUser = { ...currentUser, ...updateData, registeredAt: new Date() };
-                renderSuccess();
-                showStep('view-success');
-                Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch (err) { Swal.fire('Error', 'บันทึกล้มเหลว', 'error'); }
-        }
-
-        function renderSuccess() {
-            document.getElementById('res-id').innerText = currentUser.id;
-            document.getElementById('res-name').innerText = currentUser.name;
-            document.getElementById('res-shirt').innerText = `${currentUser.shirtSize} (${currentUser.shirtDesc || sizeConfigs.shirts[currentUser.shirtSize] || ''})`;
-            document.getElementById('res-shoe').innerText = `${currentUser.shoeSize} (${currentUser.shoeDesc || sizeConfigs.shoes[currentUser.shoeSize] || ''})`;
+            const doc = await db.collection(COLL_PATH).doc(id).get();
+            if(!doc.exists) return Swal.fire('ไม่พบรหัสพนักงาน', 'กรุณาตรวจสอบอีกครั้ง', 'error');
             
-            const date = currentUser.registeredAt?.toDate ? currentUser.registeredAt.toDate() : new Date();
-            document.getElementById('last-updated-text').innerText = `อัปเดตล่าสุดเมื่อ: ${date.toLocaleString('th-TH')}`;
-        }
-
-        function showStep(id) {
-            ['step-1', 'step-2', 'step-3', 'view-success'].forEach(v => document.getElementById(v).classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            window.scrollTo(0,0);
-        }
-
-        // --- Admin Functions ---
-
-        function checkAdminPillClick() {
-            if(currentUser?.id === SUPERUSER_ID) showAdminView();
-        }
-
-        async function showAdminView() {
-            document.getElementById('user-view').classList.add('hidden');
-            document.getElementById('admin-view').classList.remove('hidden');
-            showAdminTab('dash');
+            const data = doc.data();
+            currentUser = { id: doc.id, ...data };
+            document.getElementById('user-display-name').innerText = data.name;
+            document.getElementById('user-display-dept').innerText = `${data.position || ''} | ${data.dept || ''}`;
             
-            Swal.fire({ title: 'Loading...', didOpen: () => Swal.showLoading() });
-            const snap = await db.collection(COLL_PATH).get();
-            document.getElementById('stat-total').innerText = snap.size;
-            document.getElementById('stat-reg').innerText = snap.docs.filter(d => d.data().shirtSize).length;
+            if(currentUser.id === SUPERUSER_ID) document.getElementById('admin-pill').classList.remove('hidden');
+            
+            switchView('step-selection');
             Swal.close();
         }
 
-        function closeAdminView() {
+        async function saveSelection() {
+            const shirt = document.querySelector('input[name="shirt"]:checked')?.value;
+            const shoe = document.querySelector('input[name="shoe"]:checked')?.value;
+            if(!shirt || !shoe) return Swal.fire('ไม่ครบถ้วน', 'กรุณาเลือกไซส์ทั้งเสื้อและรองเท้า', 'warning');
+
+            Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+            const updateData = {
+                shirt, shirtNote: sizeConfigs.labels[shirt] || '',
+                shoe, shoeNote: sizeConfigs.labels[shoe] || '',
+                lineUid: lineProfile.userId,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            await db.collection(COLL_PATH).doc(currentUser.id).update(updateData);
+            
+            currentUser = { ...currentUser, ...updateData, updatedAt: new Date() };
+            showSuccess(currentUser);
+            Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+        }
+
+        function showSuccess(data) {
+            document.getElementById('res-shirt').innerText = `${data.shirt} ${data.shirtNote || ''}`;
+            document.getElementById('res-shoe').innerText = `Size ${data.shoe} ${data.shoeNote || ''}`;
+            
+            const date = data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt || new Date());
+            document.getElementById('last-updated').innerText = `วันที่เลือกล่าสุด: ${date.toLocaleString('th-TH')}`;
+            
+            switchView('view-success');
+        }
+
+        function backToEdit() {
+            renderUserGrids();
+            switchView('step-selection');
+        }
+
+        function switchView(id) {
+            ['step-login', 'step-selection', 'view-success'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        // Admin Logics
+        function switchAdminTab(tab) {
+            ['dash', 'size', 'excel'].forEach(t => {
+                document.getElementById(`admin-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+            });
+            document.getElementById(`admin-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+        }
+
+        function showAdminView() {
+            document.getElementById('user-view').classList.add('hidden');
+            document.getElementById('admin-view').classList.remove('hidden');
+            loadStats();
+        }
+
+        function closeAdmin() {
             document.getElementById('admin-view').classList.add('hidden');
             document.getElementById('user-view').classList.remove('hidden');
         }
 
-        function showAdminTab(tab) {
-            ['dash', 'config', 'helper'].forEach(t => {
-                document.getElementById(`admin-tab-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).classList.remove('tab-active');
-            });
-            document.getElementById(`admin-tab-${tab}`).classList.remove('hidden');
-            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+        async function loadStats() {
+            const snap = await db.collection(COLL_PATH).get();
+            document.getElementById('stat-total').innerText = snap.size;
+            document.getElementById('stat-reg').innerText = snap.docs.filter(d => d.data().shirt).length;
         }
 
-        function renderConfigLists() {
-            const shirtList = document.getElementById('shirt-config-list');
-            const shoeList = document.getElementById('shoe-config-list');
+        function renderAdminConfig() {
+            const shirtList = document.getElementById('config-shirt-list');
+            const shoeList = document.getElementById('config-shoe-list');
             shirtList.innerHTML = ''; shoeList.innerHTML = '';
 
-            Object.entries(sizeConfigs.shirts).forEach(([label, desc]) => {
+            sizeConfigs.shirts.forEach(s => {
                 shirtList.innerHTML += `
-                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border">
-                        <span class="w-12 font-bold text-blue-600">${label}</span>
-                        <input type="text" data-type="shirt" data-label="${label}" value="${desc}" class="flex-1 bg-white border rounded px-3 py-1 text-xs outline-none focus:border-blue-400">
+                    <div class="flex items-center gap-2">
+                        <span class="w-12 font-bold text-xs">${s}</span>
+                        <input type="text" data-size="${s}" value="${sizeConfigs.labels[s] || ''}" class="flex-1 border p-2 rounded text-xs config-input" placeholder="เช่น รอบอก 40 นิ้ว">
                     </div>`;
             });
 
-            Object.entries(sizeConfigs.shoes).forEach(([label, desc]) => {
+            sizeConfigs.shoes.forEach(s => {
                 shoeList.innerHTML += `
-                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border">
-                        <span class="w-12 font-bold text-green-600">${label}</span>
-                        <input type="text" data-type="shoe" data-label="${label}" value="${desc}" class="flex-1 bg-white border rounded px-3 py-1 text-xs outline-none focus:border-green-400">
+                    <div class="flex items-center gap-2">
+                        <span class="w-12 font-bold text-xs">${s}</span>
+                        <input type="text" data-size="${s}" value="${sizeConfigs.labels[s] || ''}" class="flex-1 border p-2 rounded text-xs config-input" placeholder="เช่น ความยาว 26">
                     </div>`;
             });
         }
 
-        async function saveSizeConfigs() {
-            const inputs = document.querySelectorAll('#admin-tab-config input');
-            const newConfigs = { shirts: {}, shoes: {} };
+        async function saveSizeConfig() {
+            const inputs = document.querySelectorAll('.config-input');
+            const newLabels = {};
+            inputs.forEach(i => { if(i.value) newLabels[i.dataset.size] = i.value; });
             
-            inputs.forEach(input => {
-                const type = input.dataset.type;
-                const label = input.dataset.label;
-                if(type === 'shirt') newConfigs.shirts[label] = input.value;
-                else newConfigs.shoes[label] = input.value;
-            });
-
             Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
-            try {
-                await db.collection(CONFIG_PATH).doc('size-descriptions').set(newConfigs);
-                sizeConfigs = newConfigs;
-                renderGrids();
-                Swal.fire('สำเร็จ', 'บันทึกคำอธิบายไซส์แล้ว ระบบจะสะท้อนไปยังหน้า User ทันที', 'success');
-            } catch (e) { Swal.fire('Error', 'ลองใหม่อีกครั้ง', 'error'); }
+            await db.collection(CONFIG_PATH).doc('size-labels').set(newLabels);
+            sizeConfigs.labels = newLabels;
+            renderUserGrids();
+            Swal.fire('สำเร็จ', 'บันทึกคำอธิบายไซส์แล้ว', 'success');
         }
 
-        async function handleImport() {
-            const raw = document.getElementById('import-json').value.trim();
+        async function importData() {
+            const raw = document.getElementById('import-area').value.trim();
             if(!raw) return;
             try {
                 const data = JSON.parse(raw);
                 Swal.fire({ title: 'Syncing...', didOpen: () => Swal.showLoading() });
-                const batchSize = 450;
+                const batchSize = 400;
                 for(let i=0; i<data.length; i+=batchSize) {
                     const batch = db.batch();
-                    data.slice(i, i+batchSize).forEach(emp => {
-                        const cid = String(emp.id).padStart(7, '0');
-                        batch.set(db.collection(COLL_PATH).doc(cid), { ...emp, id: cid }, { merge: true });
+                    data.slice(i, i+batchSize).forEach(item => {
+                        const id = String(item.id).padStart(7, '0');
+                        batch.set(db.collection(COLL_PATH).doc(id), { ...item, id }, { merge: true });
                     });
                     await batch.commit();
                 }
-                Swal.fire('สำเร็จ', `อัปเดต ${data.length} รายการแล้ว`, 'success');
-                showAdminView();
-            } catch (e) { Swal.fire('JSON Error', 'ตรวจสอบรูปแบบข้อมูลให้ถูกต้อง', 'error'); }
+                Swal.fire('สำเร็จ', `อัปเดตข้อมูล ${data.length} รายการ`, 'success');
+                loadStats();
+            } catch (e) { Swal.fire('Error', 'JSON รูปแบบไม่ถูกต้อง', 'error'); }
         }
 
-        async function handleExport() {
-            Swal.fire({ title: 'Generating XLSX...', didOpen: () => Swal.showLoading() });
+        function copyFormula(btn) {
+            const txt = btn.parentElement.innerText.replace('COPY', '').trim();
+            navigator.clipboard.writeText(txt);
+            btn.innerText = 'COPIED';
+            setTimeout(() => btn.innerText = 'COPY', 2000);
+        }
+
+        async function exportData() {
+            Swal.fire({ title: 'กำลังเตรียมไฟล์...', didOpen: () => Swal.showLoading() });
             const snap = await db.collection(COLL_PATH).get();
             const data = snap.docs.map(d => {
                 const r = d.data();
                 return {
-                    'ID': d.id, 'Name': r.name || '', 'Position': r.position || '', 'Dept': r.dept || '',
-                    'Shirt': r.shirtSize || '', 'Shirt Note': r.shirtDesc || '',
-                    'Shoe': r.shoeSize || '', 'Shoe Note': r.shoeDesc || '',
-                    'Registered At': r.registeredAt ? r.registeredAt.toDate().toLocaleString('th-TH') : '',
-                    'LINE User': r.lineDisplayName || ''
+                    'รหัสพนักงาน': d.id,
+                    'ชื่อ-นามสกุล': r.name || '',
+                    'แผนก': r.dept || '',
+                    'ไซส์เสื้อ': r.shirt || '',
+                    'รายละเอียดเสื้อ': r.shirtNote || '',
+                    'ไซส์รองเท้า': r.shoe || '',
+                    'รายละเอียดรองเท้า': r.shoeNote || '',
+                    'วันที่บันทึก': r.updatedAt ? r.updatedAt.toDate().toLocaleString('th-TH') : ''
                 };
             });
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Employees");
-            XLSX.writeFile(wb, `Maersk_HR_Core_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "Registration");
+            XLSX.writeFile(wb, "Maersk_Size_Report.xlsx");
             Swal.close();
-        }
-
-        function copyToClipboard(btn) {
-            const text = btn.parentElement.innerText.replace('COPY FORMULA', '').trim();
-            const el = document.createElement('textarea');
-            el.value = text;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            btn.innerText = 'COPIED!';
-            setTimeout(() => btn.innerText = 'COPY FORMULA', 2000);
         }
     </script>
 </body>
