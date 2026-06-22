@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📣 Broadcast — HR C❤️RE CENTER</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Kanit', sans-serif; background: #f0f4f8; }
+
+        .maersk-blue { color: #007EB3; }
+        .bg-maersk { background-color: #007EB3; }
+
+        /* Token input toggle */
+        #token-input { font-family: monospace; letter-spacing: 0.04em; }
+
+        /* Employee list */
+        .emp-row { transition: background 0.15s; }
+        .emp-row:hover { background: #f8fafc; }
+        .emp-row.selected { background: #eff9ff; }
+
+        /* Checkbox custom */
+        .custom-cb { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 5px;
+            cursor: pointer; flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+        .custom-cb.checked { background: #007EB3; border-color: #007EB3; }
+
+        /* Progress bar */
+        #progress-bar { transition: width 0.3s ease; }
+
+        /* Flex preview */
+        .flex-preview-card {
+            background: white; border-radius: 16px; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,126,179,0.15); max-width: 300px; margin: 0 auto;
+            border: 1px solid #e0f0f8;
+        }
+        .flex-preview-header {
+            background: linear-gradient(135deg, #007EB3 0%, #005f8a 100%);
+            padding: 18px 20px 14px; color: white;
+        }
+
+        /* Scrollable list */
+        #emp-list-container { max-height: 360px; overflow-y: auto; }
+        #emp-list-container::-webkit-scrollbar { width: 4px; }
+        #emp-list-container::-webkit-scrollbar-track { background: #f1f5f9; }
+        #emp-list-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Animate in */
+        .fade-in { animation: fadeIn 0.3s ease forwards; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+        /* Tab */
+        .tab-btn { padding: 8px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; color: #64748b; background: transparent; border: none; font-family: 'Kanit', sans-serif; }
+        .tab-btn.active { background: #007EB3; color: white; }
+
+        textarea { font-family: 'Kanit', sans-serif; }
+
+        /* Send log */
+        .log-item { font-size: 11px; padding: 4px 0; border-bottom: 1px dashed #f1f5f9; display: flex; gap: 6px; align-items: flex-start; }
+        .log-item:last-child { border-bottom: none; }
+        #send-log { max-height: 200px; overflow-y: auto; }
+        #send-log::-webkit-scrollbar { width: 3px; }
+        #send-log::-webkit-scrollbar-thumb { background: #e2e8f0; }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+    <div class="max-w-3xl mx-auto py-8 px-4 space-y-6">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    📣 <span>Broadcast</span>
+                    <span class="text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-1">Admin</span>
+                </h1>
+                <p class="text-sm text-slate-400 mt-0.5">ส่งข้อความแจ้งเตือนพนักงานที่ยังไม่ลงทะเบียน</p>
+            </div>
+            <a href="admin.html" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-width="2"/></svg>
+                Admin
+            </a>
+        </div>
+
+        <!-- Step 1: Token Config -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
+                <span class="w-7 h-7 rounded-full bg-maersk text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                <div>
+                    <p class="font-bold text-slate-700 text-sm">LINE Channel Access Token</p>
+                    <p class="text-[10px] text-slate-400">LINE Developers Console → Messaging API → Channel access token</p>
+                </div>
+                <button onclick="toggleToken()" id="btn-toggle-token"
+                    class="ml-auto text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 flex-shrink-0">
+                    <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-width="2"/>
+                        <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-width="2"/>
+                    </svg>
+                    Show
+                </button>
+            </div>
+            <div class="p-5">
+                <input type="password" id="token-input" placeholder="ใส่ Channel Access Token ที่นี่..."
+                    class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3] transition-colors">
+                <p class="text-[10px] text-slate-400 mt-2">⚠️ Token จะไม่ถูกบันทึก ต้องใส่ใหม่ทุกครั้ง</p>
+            </div>
+        </div>
+
+        <!-- Step 2: Load Unregistered -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
+                <span class="w-7 h-7 rounded-full bg-maersk text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                <div class="flex-1">
+                    <p class="font-bold text-slate-700 text-sm">พนักงานที่ยังไม่ลงทะเบียน</p>
+                    <p class="text-[10px] text-slate-400">โหลดรายชื่อจากฐานข้อมูล แล้วเลือกผู้รับ</p>
+                </div>
+                <button onclick="loadUnregistered()"
+                    class="flex-shrink-0 bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-slate-700 transition-all flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2"/></svg>
+                    โหลดรายชื่อ
+                </button>
+            </div>
+
+            <!-- Stats Bar -->
+            <div id="stats-bar" class="hidden px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-4 text-xs flex-wrap">
+                <span class="flex items-center gap-1.5"><span class="status-dot bg-red-400"></span><span id="stat-unreg" class="font-bold text-slate-700">0</span> <span class="text-slate-400">ยังไม่ลงทะเบียน</span></span>
+                <span class="flex items-center gap-1.5"><span class="status-dot bg-yellow-400"></span><span id="stat-no-uid" class="font-bold text-slate-700">0</span> <span class="text-slate-400">ไม่มี LINE UID (ส่งไม่ได้)</span></span>
+                <span class="flex items-center gap-1.5 ml-auto">
+                    <span id="stat-selected" class="font-bold text-[#007EB3]">0</span>
+                    <span class="text-slate-400">เลือกแล้ว</span>
+                </span>
+            </div>
+
+            <!-- Select All Bar -->
+            <div id="select-bar" class="hidden px-5 py-2.5 border-b border-slate-100 flex items-center gap-3">
+                <div id="cb-all" onclick="toggleSelectAll()" class="custom-cb" title="เลือกทั้งหมด"></div>
+                <span class="text-xs text-slate-500">เลือกทั้งหมด</span>
+                <span class="ml-auto text-[10px] text-slate-400">เฉพาะที่มี LINE UID เท่านั้น</span>
+            </div>
+
+            <!-- Employee List -->
+            <div id="emp-list-container">
+                <div id="emp-list-empty" class="p-10 text-center text-slate-300 text-sm">
+                    <div class="text-4xl mb-3">👥</div>
+                    กดโหลดรายชื่อเพื่อดูข้อมูล
+                </div>
+                <div id="emp-list"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Message Composer -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
+                <span class="w-7 h-7 rounded-full bg-maersk text-white flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                <p class="font-bold text-slate-700 text-sm">ออกแบบข้อความ (Flex Message)</p>
+
+                <!-- Tabs -->
+                <div class="ml-auto flex gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button class="tab-btn active" onclick="switchMsgTab('compose', this)">✏️ แต่ง</button>
+                    <button class="tab-btn" onclick="switchMsgTab('preview', this)">👁 Preview</button>
+                </div>
+            </div>
+
+            <!-- Compose Tab -->
+            <div id="tab-compose" class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">หัวข้อการ์ด</label>
+                        <input id="msg-title" type="text" value="📋 แจ้งเตือนลงทะเบียน" oninput="syncPreview()"
+                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3]">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">สีหัวการ์ด</label>
+                        <div class="flex gap-2">
+                            <input id="msg-color" type="color" value="#007EB3" oninput="syncPreview()"
+                                class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5">
+                            <input id="msg-color-hex" type="text" value="#007EB3" oninput="syncColorFromHex()"
+                                class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3] font-mono">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">ข้อความหลัก</label>
+                    <textarea id="msg-body" rows="3" oninput="syncPreview()"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3] resize-none"
+                        >กรุณาลงทะเบียนขนาดเครื่องแบบของท่านผ่านระบบ HR C❤️RE CENTER เพื่อให้ HR จัดเตรียมได้ทันเวลา</textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">ข้อความรอง (Sub)</label>
+                    <input id="msg-sub" type="text" value="📅 กรุณาดำเนินการภายใน 7 วัน" oninput="syncPreview()"
+                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3]">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">ป้ายปุ่ม</label>
+                        <input id="msg-btn-label" type="text" value="ลงทะเบียนเลย →" oninput="syncPreview()"
+                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3]">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">URL ปุ่ม (LIFF URL)</label>
+                        <input id="msg-btn-url" type="text" value="https://liff.line.me/2009930285-1b2B5ytM"
+                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#007EB3] font-mono">
+                    </div>
+                </div>
+
+                <!-- Templates -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">🎨 เทมเพลตสำเร็จรูป</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="applyTemplate('urgent')" class="text-[10px] bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg font-bold hover:bg-red-100 transition-all">🔴 ด่วน</button>
+                        <button onclick="applyTemplate('friendly')" class="text-[10px] bg-green-50 text-green-600 border border-green-200 px-3 py-1.5 rounded-lg font-bold hover:bg-green-100 transition-all">😊 เป็นกันเอง</button>
+                        <button onclick="applyTemplate('formal')" class="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-all">📋 ทางการ</button>
+                        <button onclick="applyTemplate('reminder')" class="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-100 transition-all">⏰ เตือนครั้งสุดท้าย</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Tab -->
+            <div id="tab-preview" class="hidden p-5 fade-in">
+                <p class="text-[10px] text-slate-400 text-center mb-4">ตัวอย่างที่พนักงานจะเห็นใน LINE</p>
+                <!-- Flex Message Preview Card -->
+                <div class="flex-preview-card">
+                    <div id="preview-header" class="flex-preview-header">
+                        <p id="preview-title" class="font-bold text-base leading-tight"></p>
+                        <p class="text-[10px] opacity-70 mt-1">HR C❤️RE CENTER • Maersk</p>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <p id="preview-body" class="text-sm text-slate-700 leading-relaxed"></p>
+                        <p id="preview-sub" class="text-xs text-slate-400"></p>
+                        <div id="preview-btn" class="mt-3 py-2.5 rounded-xl text-center text-white font-bold text-sm"></div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-300 text-center mt-3">* Preview อาจต่างจากจริงเล็กน้อย</p>
+            </div>
+        </div>
+
+        <!-- Step 4: Send -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-50 flex items-center gap-3">
+                <span class="w-7 h-7 rounded-full bg-maersk text-white flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
+                <p class="font-bold text-slate-700 text-sm">ส่งข้อความ</p>
+            </div>
+            <div class="p-5 space-y-4">
+
+                <!-- Summary -->
+                <div id="send-summary" class="bg-slate-50 rounded-xl p-4 border border-slate-100 text-xs space-y-1.5">
+                    <div class="flex justify-between"><span class="text-slate-400">พนักงานที่เลือก</span><span id="sum-selected" class="font-bold text-slate-700">0 คน</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">หัวข้อ</span><span id="sum-title" class="font-bold text-slate-700 truncate max-w-[180px]">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">ช่องทาง</span><span class="font-bold text-[#007EB3]">LINE Messaging API (Multicast)</span></div>
+                </div>
+
+                <!-- Progress -->
+                <div id="progress-section" class="hidden">
+                    <div class="flex justify-between text-xs text-slate-500 mb-1.5">
+                        <span>กำลังส่ง...</span>
+                        <span><span id="prog-curr">0</span> / <span id="prog-total">0</span></span>
+                    </div>
+                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-gradient-to-r from-[#007EB3] to-[#00a8e8] rounded-full" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <!-- Send Log -->
+                <div id="send-log-section" class="hidden">
+                    <p class="text-[10px] font-bold text-slate-500 mb-2 uppercase">📋 ผลการส่ง</p>
+                    <div id="send-log" class="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-0"></div>
+                </div>
+
+                <!-- Send Button -->
+                <button onclick="confirmSend()" id="btn-send"
+                    class="w-full bg-maersk text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-[#006a97] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" stroke-width="2"/></svg>
+                    ส่งข้อความ
+                </button>
+                <p class="text-[10px] text-slate-400 text-center">ระบบจะส่งทีละคน (Multicast) ตาม LINE UID ที่มีในระบบ</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+    // ─────────────────────────────────────────────
+    //  FIREBASE CONFIG (same as main app)
+    // ─────────────────────────────────────────────
+    const firebaseConfig = {
+        apiKey: "AIzaSyCWhf-BRWNMk5C6QzCUJbVVwGgUK9mnMoU",
+        authDomain: "hr-carecenter.firebaseapp.com",
+        projectId: "hr-carecenter",
+        storageBucket: "hr-carecenter.firebasestorage.app",
+        messagingSenderId: "935576170295",
+        appId: "1:935576170295:web:a30e4a6d50eb0b4ff4f4b2"
+    };
+    const APP_ID     = "maersk-registration";
+    const COLLECTION = `artifacts/${APP_ID}/public/data/employees`;
+
+    firebase.initializeApp(firebaseConfig);
+    const db   = firebase.firestore();
+    const auth = firebase.auth();
+
+    // State
+    let allUnregistered = [];  // { id, name, dept, position, lineUid }
+    let selectedIds     = new Set();
+
+    // ─────────────────────────────────────────────
+    //  INIT
+    // ─────────────────────────────────────────────
+    window.onload = () => {
+        auth.signInAnonymously().catch(console.error);
+        syncPreview();
+        updateSumTitle();
+    };
+
+    // ─────────────────────────────────────────────
+    //  TOKEN TOGGLE
+    // ─────────────────────────────────────────────
+    function toggleToken() {
+        const inp = document.getElementById('token-input');
+        const btn = document.getElementById('btn-toggle-token');
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" stroke-width="2"/></svg> Hide`;
+        } else {
+            inp.type = 'password';
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-width="2"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-width="2"/></svg> Show`;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  LOAD UNREGISTERED
+    // ─────────────────────────────────────────────
+    async function loadUnregistered() {
+        Swal.fire({ title:'กำลังโหลด...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+        try {
+            const snap = await db.collection(COLLECTION).get();
+            allUnregistered = snap.docs
+                .filter(d => !d.data().shirtSize)  // not registered
+                .map(d => ({ id: d.id, ...d.data() }));
+
+            const withUid    = allUnregistered.filter(e => e.lineUid);
+            const withoutUid = allUnregistered.filter(e => !e.lineUid);
+
+            document.getElementById('stat-unreg').innerText  = allUnregistered.length;
+            document.getElementById('stat-no-uid').innerText = withoutUid.length;
+            document.getElementById('stats-bar').classList.remove('hidden');
+            document.getElementById('select-bar').classList.remove('hidden');
+            document.getElementById('emp-list-empty').classList.add('hidden');
+
+            renderEmpList();
+            Swal.close();
+        } catch(e) {
+            Swal.fire('Error','ไม่สามารถโหลดข้อมูลได้','error');
+        }
+    }
+
+    function renderEmpList() {
+        const list = document.getElementById('emp-list');
+        list.innerHTML = '';
+        selectedIds.clear();
+        updateSelectedCount();
+
+        if (allUnregistered.length === 0) {
+            list.innerHTML = `<div class="p-10 text-center text-slate-300 text-sm"><div class="text-4xl mb-3">🎉</div>พนักงานทุกคนลงทะเบียนแล้ว!</div>`;
+            return;
+        }
+
+        allUnregistered.forEach(emp => {
+            const canSend = !!emp.lineUid;
+            const row = document.createElement('div');
+            row.className = `emp-row flex items-center gap-3 px-5 py-3 border-b border-slate-50 ${canSend ? 'cursor-pointer' : 'opacity-50'}`;
+            row.id = `row-${emp.id}`;
+            row.innerHTML = `
+                <div id="cb-${emp.id}" onclick="${canSend ? `toggleSelect('${emp.id}')` : ''}"
+                    class="custom-cb ${canSend ? '' : 'cursor-not-allowed opacity-40'}" title="${canSend ? 'เลือก' : 'ไม่มี LINE UID'}"></div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-slate-700 truncate">${emp.name || 'ไม่ระบุชื่อ'}</p>
+                    <p class="text-[10px] text-slate-400 truncate">${emp.position||''} ${emp.dept ? '· '+emp.dept : ''}</p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <span class="text-[9px] px-2 py-0.5 rounded-full font-bold ${canSend ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'}">
+                        ${canSend ? '✓ มี UID' : '✗ ไม่มี UID'}
+                    </span>
+                    <p class="text-[9px] text-slate-300 mt-0.5">${emp.id}</p>
+                </div>`;
+            list.appendChild(row);
+        });
+    }
+
+    function toggleSelect(empId) {
+        const cb = document.getElementById(`cb-${empId}`);
+        const row = document.getElementById(`row-${empId}`);
+        if (selectedIds.has(empId)) {
+            selectedIds.delete(empId);
+            cb.classList.remove('checked');
+            cb.innerHTML = '';
+            row.classList.remove('selected');
+        } else {
+            selectedIds.add(empId);
+            cb.classList.add('checked');
+            cb.innerHTML = `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-width="3"/></svg>`;
+            row.classList.add('selected');
+        }
+        updateSelectedCount();
+        updateCbAll();
+    }
+
+    function toggleSelectAll() {
+        const sendable = allUnregistered.filter(e => e.lineUid);
+        const allSelected = sendable.every(e => selectedIds.has(e.id));
+
+        if (allSelected) {
+            sendable.forEach(e => { if(selectedIds.has(e.id)) toggleSelect(e.id); });
+        } else {
+            sendable.forEach(e => { if(!selectedIds.has(e.id)) toggleSelect(e.id); });
+        }
+    }
+
+    function updateCbAll() {
+        const sendable = allUnregistered.filter(e => e.lineUid);
+        const cbAll = document.getElementById('cb-all');
+        if (!cbAll || sendable.length === 0) return;
+        const allSel = sendable.length > 0 && sendable.every(e => selectedIds.has(e.id));
+        if (allSel) {
+            cbAll.classList.add('checked');
+            cbAll.innerHTML = `<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-width="3"/></svg>`;
+        } else {
+            cbAll.classList.remove('checked');
+            cbAll.innerHTML = '';
+        }
+    }
+
+    function updateSelectedCount() {
+        document.getElementById('stat-selected').innerText = selectedIds.size;
+        document.getElementById('sum-selected').innerText = `${selectedIds.size} คน`;
+    }
+
+    // ─────────────────────────────────────────────
+    //  MESSAGE COMPOSER
+    // ─────────────────────────────────────────────
+    function switchMsgTab(tab, btn) {
+        document.getElementById('tab-compose').classList.add('hidden');
+        document.getElementById('tab-preview').classList.add('hidden');
+        document.getElementById(`tab-${tab}`).classList.remove('hidden');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (tab === 'preview') syncPreview();
+    }
+
+    function syncPreview() {
+        const title = document.getElementById('msg-title')?.value || '';
+        const body  = document.getElementById('msg-body')?.value || '';
+        const sub   = document.getElementById('msg-sub')?.value || '';
+        const btnLabel = document.getElementById('msg-btn-label')?.value || '';
+        const color = document.getElementById('msg-color')?.value || '#007EB3';
+
+        document.getElementById('preview-title').innerText = title;
+        document.getElementById('preview-body').innerText  = body;
+        document.getElementById('preview-sub').innerText   = sub;
+        document.getElementById('preview-btn').innerText   = btnLabel;
+        document.getElementById('preview-btn').style.background = color;
+        document.getElementById('preview-header').style.background = `linear-gradient(135deg, ${color} 0%, ${darkenHex(color, 20)} 100%)`;
+
+        // Sync hex text
+        const hexEl = document.getElementById('msg-color-hex');
+        if (hexEl && hexEl !== document.activeElement) hexEl.value = color;
+
+        updateSumTitle();
+    }
+
+    function syncColorFromHex() {
+        const hex = document.getElementById('msg-color-hex').value.trim();
+        if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+            document.getElementById('msg-color').value = hex;
+            syncPreview();
+        }
+    }
+
+    function darkenHex(hex, amount) {
+        const num = parseInt(hex.replace('#',''), 16);
+        const r = Math.max(0, (num >> 16) - amount);
+        const g = Math.max(0, ((num >> 8) & 0xff) - amount);
+        const b = Math.max(0, (num & 0xff) - amount);
+        return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+    }
+
+    function updateSumTitle() {
+        const t = document.getElementById('msg-title')?.value || '-';
+        const el = document.getElementById('sum-title');
+        if (el) el.innerText = t;
+    }
+
+    // Templates
+    const TEMPLATES = {
+        urgent: {
+            title: '🚨 ด่วนที่สุด! กรุณาลงทะเบียน',
+            body: 'ท่านยังไม่ได้ลงทะเบียนขนาดเครื่องแบบ กรุณาดำเนินการโดยด่วน มิฉะนั้นอาจไม่ได้รับเครื่องแบบตรงเวลา',
+            sub: '⚠️ กำหนดส่งข้อมูล: ภายใน 3 วัน',
+            btnLabel: '⚡ ลงทะเบียนด่วน',
+            color: '#dc2626'
+        },
+        friendly: {
+            title: '👋 สวัสดีจาก HR!',
+            body: 'เราเตรียมเครื่องแบบให้ทุกคน แค่บอกขนาดที่ใช่ก็เสร็จใน 1 นาที มาลองลงทะเบียนกันเลยนะ 😊',
+            sub: '✨ ง่ายมาก! แค่ 2 คลิก',
+            btnLabel: 'บอกขนาดให้เราหน่อย 👕',
+            color: '#16a34a'
+        },
+        formal: {
+            title: '📋 แจ้งเรื่อง: การลงทะเบียนเครื่องแบบ',
+            body: 'เรียนพนักงาน\nขอแจ้งให้ดำเนินการลงทะเบียนขนาดเครื่องแบบผ่านระบบ HR CARE CENTER เพื่อประโยชน์ในการจัดเตรียม',
+            sub: 'กรุณาดำเนินการภายในระยะเวลาที่กำหนด',
+            btnLabel: 'ดำเนินการลงทะเบียน',
+            color: '#1e3a5f'
+        },
+        reminder: {
+            title: '⏰ เตือนครั้งสุดท้าย!',
+            body: 'นี่คือการแจ้งเตือนครั้งสุดท้าย หากไม่ดำเนินการลงทะเบียนขนาดเครื่องแบบภายในวันนี้ ท่านอาจต้องรอรอบถัดไป',
+            sub: '🔔 วันนี้เป็นวันสุดท้าย',
+            btnLabel: '🏃 ลงทะเบียนก่อนหมดเวลา',
+            color: '#d97706'
+        }
+    };
+
+    function applyTemplate(key) {
+        const t = TEMPLATES[key];
+        document.getElementById('msg-title').value    = t.title;
+        document.getElementById('msg-body').value     = t.body;
+        document.getElementById('msg-sub').value      = t.sub;
+        document.getElementById('msg-btn-label').value = t.btnLabel;
+        document.getElementById('msg-color').value    = t.color;
+        document.getElementById('msg-color-hex').value = t.color;
+        syncPreview();
+    }
+
+    // ─────────────────────────────────────────────
+    //  BUILD FLEX MESSAGE JSON
+    // ─────────────────────────────────────────────
+    function buildFlexMessage(empName) {
+        const title    = document.getElementById('msg-title').value;
+        const body     = document.getElementById('msg-body').value;
+        const sub      = document.getElementById('msg-sub').value;
+        const btnLabel = document.getElementById('msg-btn-label').value;
+        const btnUrl   = document.getElementById('msg-btn-url').value;
+        const color    = document.getElementById('msg-color').value;
+        const darkColor = darkenHex(color, 20);
+
+        return {
+            type: "flex",
+            altText: title,
+            contents: {
+                type: "bubble",
+                header: {
+                    type: "box",
+                    layout: "vertical",
+                    contents: [
+                        {
+                            type: "text",
+                            text: title,
+                            color: "#ffffff",
+                            weight: "bold",
+                            size: "md",
+                            wrap: true
+                        },
+                        {
+                            type: "text",
+                            text: "HR C❤️RE CENTER • Maersk",
+                            color: "#ffffff99",
+                            size: "xxs",
+                            margin: "sm"
+                        }
+                    ],
+                    backgroundColor: color,
+                    paddingAll: "18px"
+                },
+                body: {
+                    type: "box",
+                    layout: "vertical",
+                    contents: [
+                        {
+                            type: "box",
+                            layout: "horizontal",
+                            contents: [
+                                {
+                                    type: "text",
+                                    text: "เรียนคุณ",
+                                    size: "xs",
+                                    color: "#aaaaaa",
+                                    flex: 0
+                                },
+                                {
+                                    type: "text",
+                                    text: empName || "พนักงาน",
+                                    size: "xs",
+                                    color: color,
+                                    weight: "bold",
+                                    margin: "sm"
+                                }
+                            ],
+                            margin: "none"
+                        },
+                        {
+                            type: "separator",
+                            margin: "md",
+                            color: "#f1f5f9"
+                        },
+                        {
+                            type: "text",
+                            text: body,
+                            wrap: true,
+                            size: "sm",
+                            color: "#444444",
+                            margin: "md",
+                            lineSpacing: "6px"
+                        },
+                        {
+                            type: "text",
+                            text: sub,
+                            wrap: true,
+                            size: "xs",
+                            color: "#888888",
+                            margin: "md"
+                        }
+                    ],
+                    paddingAll: "18px"
+                },
+                footer: {
+                    type: "box",
+                    layout: "vertical",
+                    contents: [
+                        {
+                            type: "button",
+                            style: "primary",
+                            color: color,
+                            action: {
+                                type: "uri",
+                                label: btnLabel,
+                                uri: btnUrl
+                            },
+                            height: "sm",
+                            cornerRadius: "12px"
+                        }
+                    ],
+                    paddingAll: "14px",
+                    paddingTop: "4px"
+                },
+                styles: {
+                    footer: { separator: true, separatorColor: "#f1f5f9" }
+                }
+            }
+        };
+    }
+
+    // ─────────────────────────────────────────────
+    //  CONFIRM & SEND
+    // ─────────────────────────────────────────────
+    async function confirmSend() {
+        const token = document.getElementById('token-input').value.trim();
+        if (!token) return Swal.fire('ขาด Token','กรุณาใส่ LINE Channel Access Token ก่อน','warning');
+        if (selectedIds.size === 0) return Swal.fire('ไม่มีผู้รับ','กรุณาเลือกพนักงานที่ต้องการส่งก่อน','warning');
+
+        const result = await Swal.fire({
+            title: `ยืนยันการส่ง?`,
+            html: `จะส่งข้อความถึง <b>${selectedIds.size} คน</b><br><span class="text-sm text-slate-400">ผ่าน LINE Messaging API (Multicast)</span>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: `ส่งเลย ${selectedIds.size} คน`,
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#007EB3'
+        });
+
+        if (!result.isConfirmed) return;
+        await sendMessages(token);
+    }
+
+    async function sendMessages(token) {
+        const targets = allUnregistered.filter(e => selectedIds.has(e.id) && e.lineUid);
+        const total   = targets.length;
+
+        // Show progress
+        const progSection = document.getElementById('progress-section');
+        const logSection  = document.getElementById('send-log-section');
+        const sendLog     = document.getElementById('send-log');
+        progSection.classList.remove('hidden');
+        logSection.classList.remove('hidden');
+        sendLog.innerHTML = '';
+        document.getElementById('prog-total').innerText = total;
+        document.getElementById('btn-send').disabled = true;
+        document.getElementById('btn-send').classList.add('opacity-50', 'cursor-not-allowed');
+
+        let success = 0, fail = 0;
+
+        for (let i = 0; i < targets.length; i++) {
+            const emp = targets[i];
+            const flexMsg = buildFlexMessage(emp.name);
+
+            // Update progress
+            document.getElementById('prog-curr').innerText = i + 1;
+            const pct = Math.round(((i + 1) / total) * 100);
+            document.getElementById('progress-bar').style.width = pct + '%';
+
+            try {
+                const resp = await fetch('https://api.line.me/v2/bot/message/push', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        to: emp.lineUid,
+                        messages: [flexMsg]
+                    })
+                });
+
+                if (resp.ok) {
+                    success++;
+                    addLog('✅', `${emp.name} (${emp.id})`, 'text-green-600');
+                } else {
+                    const errData = await resp.json().catch(()=>({}));
+                    fail++;
+                    addLog('❌', `${emp.name} (${emp.id}) — ${errData.message || resp.status}`, 'text-red-500');
+                }
+            } catch(e) {
+                fail++;
+                addLog('⚠️', `${emp.name} (${emp.id}) — Network Error`, 'text-amber-500');
+            }
+
+            // Small delay to avoid rate limiting
+            if (i < targets.length - 1) await sleep(200);
+        }
+
+        // Done
+        document.getElementById('btn-send').disabled = false;
+        document.getElementById('btn-send').classList.remove('opacity-50', 'cursor-not-allowed');
+
+        Swal.fire({
+            icon: fail === 0 ? 'success' : 'warning',
+            title: 'ส่งเสร็จสิ้น',
+            html: `<div class="text-left space-y-1">
+                <p>✅ สำเร็จ: <b class="text-green-600">${success} คน</b></p>
+                ${fail > 0 ? `<p>❌ ล้มเหลว: <b class="text-red-500">${fail} คน</b></p>` : ''}
+            </div>`,
+            confirmButtonColor: '#007EB3'
+        });
+    }
+
+    function addLog(icon, msg, colorClass) {
+        const log = document.getElementById('send-log');
+        const item = document.createElement('div');
+        item.className = 'log-item fade-in';
+        item.innerHTML = `<span>${icon}</span><span class="${colorClass} font-medium">${msg}</span>`;
+        log.appendChild(item);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    </script>
+</body>
+</html>
