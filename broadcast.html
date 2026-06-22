@@ -317,8 +317,8 @@
     // ─────────────────────────────────────────────
     //  INIT
     // ─────────────────────────────────────────────
-    window.onload = () => {
-        auth.signInAnonymously().catch(console.error);
+    window.onload = async () => {
+        try { await auth.signInAnonymously(); } catch(e) { console.error('Auth error:', e); }
         syncPreview();
         updateSumTitle();
     };
@@ -344,10 +344,22 @@
     async function loadUnregistered() {
         Swal.fire({ title:'กำลังโหลด...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
         try {
+            // Ensure signed in before querying
+            if (!auth.currentUser) await auth.signInAnonymously();
+
             const snap = await db.collection(COLLECTION).get();
+
+            console.log(`[Broadcast] Total docs: ${snap.size}`);
+
             allUnregistered = snap.docs
-                .filter(d => !d.data().shirtSize)  // not registered
+                .filter(d => {
+                    const data = d.data();
+                    // Not registered = no shirtSize OR shirtSize is empty string
+                    return !data.shirtSize || data.shirtSize === '';
+                })
                 .map(d => ({ id: d.id, ...d.data() }));
+
+            console.log(`[Broadcast] Unregistered: ${allUnregistered.length}`);
 
             const withUid    = allUnregistered.filter(e => e.lineUid);
             const withoutUid = allUnregistered.filter(e => !e.lineUid);
@@ -361,7 +373,8 @@
             renderEmpList();
             Swal.close();
         } catch(e) {
-            Swal.fire('Error','ไม่สามารถโหลดข้อมูลได้','error');
+            console.error('[Broadcast] Load error:', e);
+            Swal.fire('Error', `ไม่สามารถโหลดข้อมูลได้<br><small style="color:#aaa">${e.message}</small>`, 'error');
         }
     }
 
